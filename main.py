@@ -17,11 +17,8 @@ plant_units = get_plant_characteristics(raw_data)
 demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
 
 #run the data validations 
-data_checks = ''
-data_checks += capacity_checks_of_plants(plant_units) + "\n"
-data_checks += cost_checks_of_plant(plant_units)
-print(data_checks)
-
+print(capacity_checks_of_plants(plant_units))
+print(cost_checks_of_plant(plant_units))
 
 
 #reading optimization data 

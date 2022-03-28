@@ -13,7 +13,7 @@ def reading_optimization_data(plant_units,demand_UP):
             plant_capacity[plant.name] = plant.capacity
 
 
-    scheduling_hours = list(range(0,24))
+    scheduling_hours = list(range(1,96))
     scheduling_dates =  demand_UP['date'].unique()
 
     return scheduling_hours, scheduling_dates, plant_names, plant_production_costs, plant_capacity
