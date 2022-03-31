@@ -84,6 +84,8 @@ def get_demand_data(model_demand):
     
 
     demand_of_UP_bydate_byhour_units = []
+    print(demand_UP['time_block_of_day'].unique())
+    print(demand_UP['hour_of_day'].unique())
     for index,demand_row in demand_UP.iterrows():
         demand_of_UP_bydate_byhour_units.append(Demand(demand_row['date'],demand_row['hour_of_day'],demand_row['time_block_of_day'],demand_row['avg_unit_current_load']))
 

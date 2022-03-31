@@ -1,7 +1,7 @@
 from utils import get_plant_characteristics, get_raw_data_by_time,reading_input_data,get_demand_data
 from utils import FILE_NAME,DEVELOPMENT_PERIOD_END_TIME,DEVELOPMENT_PERIOD_START_TIME,MODEL_PERIOD_END_TIME,MODEL_PERIOD_START_TIME
 from optimization import reading_optimization_data,creating_optimization_instance,solving_optimization_instance
-from data_validations import capacity_checks_of_plants,cost_checks_of_plant
+from data_validations_preprocessing import capacity_checks_of_plants,cost_checks_of_plant
 #---------------------data preprocessing-------------------------
 #reading the raw data 
 raw_data = reading_input_data(file_name=FILE_NAME)
