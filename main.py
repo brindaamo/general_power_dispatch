@@ -21,7 +21,7 @@ print(capacity_checks_of_plants(plant_units))
 print(cost_checks_of_plant(plant_units))
 average_demand_dict=filling_missing_demand_withmean(demand_of_UP_bydate_byhour_units)
 demand_of_UP_bydate_byhour_units_filled,demand_values = missing_demand_at_timeblock_level_and_filling(demand_of_UP_bydate_byhour_units,average_demand_dict)
-
+print(demand_values)
 
 #reading optimization data 
 scheduling_hours, scheduling_dates, plant_names, plant_production_costs, plant_capacity = reading_optimization_data(plant_units,demand_UP)
