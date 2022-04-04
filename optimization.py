@@ -13,12 +13,12 @@ def reading_optimization_data(plant_units,demand_UP):
             plant_capacity[plant.name] = plant.capacity
 
 
-    scheduling_time_blocks = list(range(1,96))
+    scheduling_time_blocks = list(range(1,97))
     scheduling_dates =  demand_UP['date'].unique()
 
     return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_capacity
 
-def creating_optimization_instance(demand_of_UP_bydate_byhour_units,demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_capacity):
+def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_capacity):
     
     #creating the LP problem instance
     prob = LpProblem("production_cost_minimization", LpMinimize)
