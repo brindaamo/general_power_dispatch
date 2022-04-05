@@ -28,14 +28,14 @@ def output_formatting(optimization_solution):
                 json_data['date'] = date
                 json_data['time_bucket'] = time_bucket
                 json_data['production'] = production
-                optimization_solution_json_data.append(json_data);  
+                optimization_solution_json_data.append(json_data);
         output_file.write(json.dumps(optimization_solution_json_data, default = my_date_time_converter))
     return json.dumps(optimization_solution_json_data, default = my_date_time_converter)
 
 
 def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units):
-    #first input parameter needs to be changed to optimization output formatted 
-    #demand of UP by hour needs to be satisfied summed across plant units 
+    #first input parameter needs to be changed to optimization output formatted
+    #demand of UP by hour needs to be satisfied summed across plant units
     optimization_solution_obj = json.loads(optimization_solution_json)
     for demand_details in demand_of_UP_bydate_byhour_units:
        print(str(demand_details.date) + ' '+ str(demand_details.time_block) + ' '+ str(demand_details.demand_val))
@@ -43,13 +43,13 @@ def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP
 
 def capacity_constraint_check(optimization_solution_json,plant_units):
     #every plant needs to run at a capacity that is not exceeding the maximum capacity of the plant
-    #the percentage at which the plant is working at 
+    #the percentage at which the plant is working at
     optimization_solution_obj = json.loads(optimization_solution_json)
-    
+
     for obj in optimization_solution_obj:
         for plant in plant_units:
             if(plant.name.replace(" ", "_") == obj['plant_name']):
-                obj['high_capacity_flag'] = float(obj['production']) >= float(plant.capacity) 
+                obj['high_capacity_flag'] = float(obj['production']) >= float(plant.capacity)
                 obj['capacity_percent'] = (float(obj['production']) / float(plant.capacity)) * 100
     with open("optimization_solution_json.json","w") as output_file:
         output_file.write(json.dumps(optimization_solution_obj, default = my_date_time_converter))

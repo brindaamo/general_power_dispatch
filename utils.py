@@ -13,10 +13,10 @@ raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.
 COAL_RAMP_UP_PERCENT = 0.01
 COAL_RAMP_DOWN_PERCENT = 0.015
 COAL_EFFICIENCY_RATE = 0.55
-DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 1, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 2, 1)
-MODEL_PERIOD_START_TIME = datetime(2021, 2, 1)
-MODEL_PERIOD_END_TIME = datetime(2021, 3, 1)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 9, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 10, 1)
+MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
+MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
 INFINITE_CAPACITY = 8000
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
@@ -84,18 +84,12 @@ def get_demand_data(model_demand):
     
 
     demand_of_UP_bydate_byhour_units = []
-    print(demand_UP['time_block_of_day'].unique())
-    print(demand_UP['hour_of_day'].unique())
     for index,demand_row in demand_UP.iterrows():
         demand_of_UP_bydate_byhour_units.append(Demand(demand_row['date'],demand_row['hour_of_day'],demand_row['time_block_of_day'],demand_row['avg_unit_current_load'],str(demand_row['date'])+"-"+str(demand_row['time_block_of_day'])))
     
-    demand_values = {} 
 
-    for item in demand_of_UP_bydate_byhour_units:
-        demand_key = str(item.date) + "-" +str(item.time_block)
-        demand_values[demand_key] = item.demand_val
         
-    return demand_of_UP_bydate_byhour_units,demand_UP,demand_values
+    return demand_of_UP_bydate_byhour_units,demand_UP
 
 
 
