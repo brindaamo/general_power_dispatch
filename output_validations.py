@@ -7,7 +7,6 @@ def output_formatting(optimization_solution):
 def demand_satisfaction_constraint_check(optimization_solution,demand_values):
     #input of this function is from demand_values_filled missing_demand_at_timeblock_level_and_filling
     # this is a dictionary with key in the format of 'yyyy-mm-dd-time_block' and value is the demand value  
-    # 
     return None
 
 def capacity_constraint_check():
