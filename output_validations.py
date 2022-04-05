@@ -81,12 +81,15 @@ def date_hook(json_dict):
             pass
     return json_dict
 
-raw_data = reading_input_data(file_name=FILE_NAME)
-plant_units = get_plant_characteristics(raw_data)
 
-model_data = get_raw_data_by_time(raw_data,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME)
-demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
+##Testing code starts
+#raw_data = reading_input_data(file_name=FILE_NAME)
+#plant_units = get_plant_characteristics(raw_data)
 
-optimization_solution_json = output_formatting("optimization_solution.txt")
-capacity_constraint_check(optimization_solution_json,plant_units)
-demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units)
+#model_data = get_raw_data_by_time(raw_data,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME)
+#demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
+
+#optimization_solution_json = output_formatting("optimization_solution.txt")
+#capacity_constraint_check(optimization_solution_json,plant_units)
+#demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units)
+##Testing code ends
