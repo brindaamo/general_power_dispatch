@@ -16,6 +16,9 @@ def reading_optimization_data(plant_units,demand_UP):
     scheduling_time_blocks = list(range(1,97))
     scheduling_dates =  demand_UP['date'].unique()
 
+    print(scheduling_time_blocks)
+    print(scheduling_dates)
+
     return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_capacity
 
 def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_capacity):

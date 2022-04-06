@@ -8,7 +8,7 @@ from utils import FILE_NAME
 
 def output_formatting(optimization_solution):
     #output should be a json file with plant_name, date, timeblock and production_units
-    print('Fromating optimization solution output')
+    print('formatting optimization solution output')
     optimization_solution_json_data = []
     with open(optimization_solution,"r") as file, open("optimization_solution_json.json","w") as output_file:
         for line in file:
@@ -27,7 +27,7 @@ def output_formatting(optimization_solution):
                 json_data['date'] = formatted_date
                 json_data['time_bucket'] = time_bucket
                 json_data['production'] = float(production)
-                optimization_solution_json_data.append(json_data);
+                optimization_solution_json_data.append(json_data)
         output_file.write(json.dumps(optimization_solution_json_data, default = my_date_time_converter))
     return json.dumps(optimization_solution_json_data, default = my_date_time_converter)
 
@@ -36,17 +36,22 @@ def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP
     #first input parameter needs to be changed to optimization output formatted
     #demand of UP by hour needs to be satisfied summed across plant units
     print('Demand satisfaction constraint check')
-    demand_satisfaction = [];
+    demand_satisfaction = []
     optimization_solution_obj = json.loads(optimization_solution_json,object_hook=date_hook)
     optimization_df = pd.DataFrame(optimization_solution_obj)
     for demand in demand_of_UP_bydate_byhour_units:
         sum_total_of_production = optimization_df.loc[(optimization_df['date'] == demand.date) & (optimization_df['time_bucket'] == str(demand.time_block)),'production'].sum()
-        if float(sum_total_of_production) >= demand.demand_val :
+        if int(sum_total_of_production)+1 >= int(demand.demand_val) :
                 demand_satisfaction.append('Demand of '+ str(demand.demand_val) +' satisfied during ' 
                 + str(demand.date) 
                 + ' and block '+ str(demand.time_block)
                 + ' with production units ' + str(sum_total_of_production))
         else:
+            print('Demand of '+ str(demand.demand_val) +' not satisfied during ' 
+            + str(demand.date) 
+            + ' and block '+ str(demand.time_block)
+            + ' with production units ' + str(sum_total_of_production))
+            print(sum_total_of_production)
             demand_satisfaction.append('Demand of '+ str(demand.demand_val) +' not satisfied during ' 
             + str(demand.date) 
             + ' and block '+ str(demand.time_block)
