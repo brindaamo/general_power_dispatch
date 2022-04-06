@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
-from datetime import datetime
+from datetime import date, datetime
 import re
 from utils import FILE_NAME
 
@@ -64,12 +64,17 @@ def capacity_constraint_check(optimization_solution_json,plant_units):
                 obj['high_capacity_flag'] = float(obj['production']) >= float(plant.capacity)
                 obj['capacity_percent'] = (float(obj['production']) / float(plant.capacity)) * 100
     with open("optimization_solution_json.json","w") as output_file:
-        output_file.write(json.dumps(optimization_solution_obj, default = my_date_time_converter))
-    return json.dumps(optimization_solution_obj, default = my_date_time_converter)
+        output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
+    return json.dumps(optimization_solution_obj,  default = my_date_converter)
 
 #This method is used to convert datetime to string while parsing to json in code
 def my_date_time_converter(o):
     if isinstance(o, datetime):
+        return o.__str__()
+
+#This method is used to convert datetime.date to string while parsing to json in code
+def my_date_converter(o):
+    if isinstance(o, date):
         return o.__str__()
 
 #This method is used to convert string to date for formatting json to string
@@ -83,13 +88,13 @@ def date_hook(json_dict):
 
 
 ##Testing code starts
-#raw_data = reading_input_data(file_name=FILE_NAME)
-#plant_units = get_plant_characteristics(raw_data)
+raw_data = reading_input_data(file_name=FILE_NAME)
+plant_units = get_plant_characteristics(raw_data)
 
-#model_data = get_raw_data_by_time(raw_data,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME)
-#demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
+model_data = get_raw_data_by_time(raw_data,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME)
+demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
 
-#optimization_solution_json = output_formatting("optimization_solution.txt")
-#capacity_constraint_check(optimization_solution_json,plant_units)
-#demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units)
+optimization_solution_json = output_formatting("optimization_solution.txt")
+capacity_constraint_check(optimization_solution_json,plant_units)
+demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units)
 ##Testing code ends
