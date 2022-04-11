@@ -17,7 +17,7 @@ DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 1, 1)
 DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 2, 1)
 MODEL_PERIOD_START_TIME = datetime(2021, 2, 1)
 MODEL_PERIOD_END_TIME = datetime(2021, 3, 1)
-INFINITE_CAPACITY = 8000
+INFINITE_CAPACITY = 6375
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
 FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
@@ -55,6 +55,8 @@ def get_plant_characteristics(plant_unit_timeblocks):
             plant_ramp_down_delta = plant_data['upsldc_unit_capacity'].median()*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
             if plant_name == 'UP DRAWAL':
                 plant_data['upsldc_unit_capacity'] = INFINITE_CAPACITY
+            else:
+                plant_data['upsldc_unit_capacity'] = 0.85*plant_data['upsldc_unit_capacity']
             plant_data_row = plant_data.iloc[0]
             average_cost = plant_data['variable_cost'].mean()
             plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],plant_ramp_up_delta, plant_ramp_down_delta, average_cost))

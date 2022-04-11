@@ -23,9 +23,11 @@ def filling_missing_demand_withmean(demand_of_UP_bydate_byhour_units):
     average_demand_list = []
 
     for hour in range(0,24):
+        average_demand_list_by_hour = []
         for demand_block in demand_of_UP_bydate_byhour_units:
             if demand_block.hour == hour:
-                average_demand_list.append(demand_block.demand_val)
+                average_demand_list_by_hour.append(demand_block.demand_val)
+        average_demand_list.append(mean(average_demand_list_by_hour))
 
     return average_demand_list
 
@@ -52,16 +54,16 @@ def missing_demand_at_timeblock_level_and_filling(demand_of_UP_bydate_byhour_uni
         demand_values[demand_block.date_time_block] = demand_block.demand_val
     
     for unique_demand_time_blocks in unique_time_blocks:
-        if unique_demand_time_blocks not in demand_values.keys():
+        if unique_demand_time_blocks not in demand_values:            
             date = unique_demand_time_blocks.rsplit('-',1)[0]
             time_block = int(unique_demand_time_blocks.rsplit('-',1)[1])
             hour = int(mapping_hour_time_block[time_block])
             demand_of_UP_bydate_byhour_units.append(Demand(date,hour,time_block,average_demand_list[hour],unique_demand_time_blocks))
-     #demand_values with filled values 
 
+     #demand_values with filled values 
     demand_values_filled = {}
     for demand_block in demand_of_UP_bydate_byhour_units:
-        demand_values_filled[demand_block.date_time_block] = demand_block.demand_val      
+        demand_values_filled[demand_block.date_time_block] = demand_block.demand_val    
     
     return demand_of_UP_bydate_byhour_units,demand_values_filled
     
