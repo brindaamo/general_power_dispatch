@@ -1,6 +1,7 @@
 .ipynb_checkpoints
 __pycache__
-RawData
+optimization_solution_json.json
+optimization_solution_with_new_constraints.txt
 RawData/PlantFeatures.csv
 RawData/upsldc_plant_time_block.csv
 RawData/upsldc_plant_unit_time_block.csv
