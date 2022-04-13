@@ -13,14 +13,28 @@ raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.
 COAL_RAMP_UP_PERCENT = 0.01
 COAL_RAMP_DOWN_PERCENT = 0.015
 COAL_EFFICIENCY_RATE = 0.55
-DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 1, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 2, 1)
-MODEL_PERIOD_START_TIME = datetime(2021, 2, 1)
-MODEL_PERIOD_END_TIME = datetime(2021, 3, 1)
-INFINITE_CAPACITY = 6375
+DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
+MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
+MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
+INFINITE_CAPACITY = 10000
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
-FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
+
+#------------------CHANGE THIS INPUT-------------------------
+#-----------------name of the month--------------------------
+MONTH = "oct_2021"
+
+#------------------input file locations------------------------
+INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
+INPUT_MAPPING_TIMEBLOCKS_TO_HOURS = "RawData/hours_timeblock_mapping.csv"
+
+#-------------------output_file_locations-----------------------
+OUTPUT_SOLUTION_FOLDER = "output_files"
+OUTPUT_ACTUALS_FOLDER = "output_files"
+
+
+
 
 #this function will read the UPSLDC input file from the location (this is the data for the whole time period.)
 def reading_input_data(file_name):
@@ -53,13 +67,14 @@ def get_plant_characteristics(plant_unit_timeblocks):
             plant_data = plant_unit_timeblocks[(plant_unit_timeblocks['plant_name'] == plant_name) & (plant_unit_timeblocks['actual_plant_unit'] == plant_unit_num)]
             plant_ramp_up_delta = plant_data['upsldc_unit_capacity'].median()*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
             plant_ramp_down_delta = plant_data['upsldc_unit_capacity'].median()*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
-            if plant_name == 'UP DRAWAL':
-                plant_data['upsldc_unit_capacity'] = INFINITE_CAPACITY
-            else:
-                plant_data['upsldc_unit_capacity'] = 0.85*plant_data['upsldc_unit_capacity']
             plant_data_row = plant_data.iloc[0]
+            if plant_name == 'UP DRAWAL':
+                new_capacity = INFINITE_CAPACITY
+            else:
+                new_capacity = 0.85*plant_data_row['upsldc_unit_capacity']
+
             average_cost = plant_data['variable_cost'].mean()
-            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],plant_ramp_up_delta, plant_ramp_down_delta, average_cost))
+            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], new_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost))
            
             
     return plant_units
@@ -89,8 +104,6 @@ def get_demand_data(model_demand):
     for index,demand_row in demand_UP.iterrows():
         demand_of_UP_bydate_byhour_units.append(Demand(demand_row['date'],demand_row['hour_of_day'],demand_row['time_block_of_day'],demand_row['avg_unit_current_load'],str(demand_row['date'])+"-"+str(demand_row['time_block_of_day'])))
     
-
-        
     return demand_of_UP_bydate_byhour_units,demand_UP
 
 

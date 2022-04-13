@@ -4,7 +4,7 @@ import pandas as pd
 from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
 from datetime import date, datetime
 import re
-from utils import FILE_NAME
+from utils import INPUT_RAW_FILE_NAME
 
 def output_formatting(optimization_solution):
     #output should be a json file with plant_name, date, timeblock and production_units
@@ -28,7 +28,7 @@ def output_formatting(optimization_solution):
                 json_data['time_bucket'] = time_bucket
                 json_data['production'] = float(production)
                 optimization_solution_json_data.append(json_data)
-        output_file.write(json.dumps(optimization_solution_json_data, default = my_date_time_converter))
+        # output_file.write(json.dumps(optimization_solution_json_data, default = my_date_time_converter))
     return json.dumps(optimization_solution_json_data, default = my_date_time_converter)
 
 
@@ -68,8 +68,8 @@ def capacity_constraint_check(optimization_solution_json,plant_units):
             if(plant.name.replace(" ", "_") == obj['plant_name']):
                 obj['high_capacity_flag'] = float(obj['production']) >= float(plant.capacity)
                 obj['capacity_percent'] = (float(obj['production']) / float(plant.capacity)) * 100
-    with open("optimization_solution_json.json","w") as output_file:
-        output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
+    # with open("optimization_solution_json.json","w") as output_file:
+    #     output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
     return json.dumps(optimization_solution_obj,  default = my_date_converter)
 
 def adding_demand_values_to_json(json_after_capacity_constraint_check,demand_of_UP_bydate_byhour_units):
