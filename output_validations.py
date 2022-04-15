@@ -58,6 +58,8 @@ def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP
             + ' with production units ' + str(sum_total_of_production))
     return demand_satisfaction
 
+
+
 def capacity_constraint_check(optimization_solution_json,plant_units):
     #every plant needs to run at a capacity that is not exceeding the maximum capacity of the plant
     #the percentage at which the plant is working at
@@ -65,16 +67,22 @@ def capacity_constraint_check(optimization_solution_json,plant_units):
     optimization_solution_obj = json.loads(optimization_solution_json,object_hook=date_hook)
     for obj in optimization_solution_obj:
         for plant in plant_units:
-            if(plant.name.replace(" ", "_") == obj['plant_name']):
+            formatted_name = re.sub(r"(\s)|(-)", "_", plant.name)
+            if(formatted_name == obj['plant_name']):
+                obj['capacity'] = plant.capacity
+                obj['plant_ownership'] = plant.ownership
+                obj['fuel_type'] = plant.fuel_type
+                obj['ramp_up_delta'] = plant.ramp_up_delta
+                obj['ramp_down_delta'] = plant.ramp_down_delta
+                obj['avg_variable_cost'] = plant.average_variable_cost 
+                obj['production_cost'] = plant.average_variable_cost*obj['production']
                 obj['high_capacity_flag'] = float(obj['production']) >= float(plant.capacity)
                 obj['capacity_percent'] = (float(obj['production']) / float(plant.capacity)) * 100
-    # with open("optimization_solution_json.json","w") as output_file:
-    #     output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
+    with open("optimization_solution_json.json","w") as output_file:
+        output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
     return json.dumps(optimization_solution_obj,  default = my_date_converter)
 
-def adding_demand_values_to_json(json_after_capacity_constraint_check,demand_of_UP_bydate_byhour_units):
-    
-    return None
+
 
 #This method is used to convert datetime to string while parsing to json in code
 def my_date_time_converter(o):

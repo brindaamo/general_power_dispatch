@@ -57,6 +57,8 @@ with open("optimization_solution_with_new_constraints.txt", "w") as text_file:
 opti_solution_json = output_formatting(optimization_solution='optimization_solution_with_new_constraints.txt')
 capacity_constraint_checks = capacity_constraint_check(opti_solution_json,plant_units)
 df_json = pd.read_json(capacity_constraint_checks)
+
+
 opti_solution_location = OUTPUT_SOLUTION_FOLDER +"/"+ MONTH + "__opti_solution"+".csv"
 df_json.to_csv(opti_solution_location)
 
