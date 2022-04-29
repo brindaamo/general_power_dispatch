@@ -5,6 +5,7 @@ from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_dat
 from datetime import date, datetime
 import re
 from utils import INPUT_RAW_FILE_NAME
+from datetime import timedelta
 
 def output_formatting(optimization_solution):
     #output should be a json file with plant_name, date, timeblock and production_units
@@ -82,7 +83,27 @@ def capacity_constraint_check(optimization_solution_json,plant_units):
         output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
     return json.dumps(optimization_solution_obj,  default = my_date_converter)
 
-
+def add_plant_percent_ramp_up_or_down(optimization_solution_json,plant_units):
+    print('Adding percent ramp up/down to plant output data')
+    optimization_solution_obj = json.loads(optimization_solution_json,object_hook=date_hook)
+    for obj in optimization_solution_obj:     
+        if int(obj['time_bucket']) == 1:
+            prev_date = obj['date'] - timedelta(days=1)
+            prev_time_block_data = [x for x in optimization_solution_obj 
+            if x['plant_name'] == obj['plant_name']
+            and  x['date'] == prev_date 
+            and int(x['time_bucket']) == 96]
+        else:
+            prev_time_block_data = [x for x in optimization_solution_obj 
+            if x['plant_name'] == obj['plant_name']
+            and  x['date'] == obj['date'] 
+            and int(x['time_bucket']) == int(obj['time_bucket'])-1]
+        if len(prev_time_block_data) > 0:
+            #print(prev_time_block_data[0])
+            obj['percent_ramp_up_or_down'] = round((obj['production'] - prev_time_block_data[0]['production'])/obj['production'] * 100, 3)
+    with open("optimization_solution_json.json","w") as output_file:
+        output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
+    return json.dumps(optimization_solution_obj,  default = my_date_converter)
 
 #This method is used to convert datetime to string while parsing to json in code
 def my_date_time_converter(o):
@@ -105,13 +126,15 @@ def date_hook(json_dict):
 
 
 ##Testing code starts
-# raw_data = reading_input_data(file_name=FILE_NAME)
-# plant_units = get_plant_characteristics(raw_data)
+#FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
+#raw_data = reading_input_data(file_name=FILE_NAME)
+#plant_units = get_plant_characteristics(raw_data)
 
-# model_data = get_raw_data_by_time(raw_data,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME)
-# demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
+#model_data = get_raw_data_by_time(raw_data,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME)
+#demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
 
-# optimization_solution_json = output_formatting("optimization_solution.txt")
+#optimization_solution_json = output_formatting("optimization_solution.txt")
+#add_plant_percent_ramp_up_or_down(optimization_solution_json,plant_units)
 # capacity_constraint_check(optimization_solution_json,plant_units)
 # demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units)
 ##Testing code ends
