@@ -1,6 +1,6 @@
 import pandas as pd
-from utils import get_plant_characteristics, get_raw_data_by_time,reading_input_data,get_demand_data
-from utils import INPUT_RAW_FILE_NAME,DEVELOPMENT_PERIOD_END_TIME,DEVELOPMENT_PERIOD_START_TIME,MODEL_PERIOD_END_TIME,MODEL_PERIOD_START_TIME,OUTPUT_ACTUALS_FOLDER,OUTPUT_SOLUTION_FOLDER,MONTH
+from utils import get_plant_characteristics, get_raw_data_by_time,reading_input_data,get_demand_data,get_demand_based_on_profile
+from utils import INPUT_RAW_FILE_NAME,DEVELOPMENT_PERIOD_END_TIME,DEVELOPMENT_PERIOD_START_TIME,MODEL_PERIOD_END_TIME,MODEL_PERIOD_START_TIME,OUTPUT_ACTUALS_FOLDER,OUTPUT_SOLUTION_FOLDER,MONTH,DEMAND_PROFILE
 from optimization import reading_optimization_data,creating_optimization_instance,solving_optimization_instance
 from data_validations_preprocessing import capacity_checks_of_plants,cost_checks_of_plant,filling_missing_demand_withmean,missing_demand_at_timeblock_level_and_filling
 from output_validations import output_formatting,capacity_constraint_check
@@ -18,6 +18,7 @@ plant_units = get_plant_characteristics(raw_data)
 
 #getting demand data 
 demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
+demand_of_UP_bydate_byhour_units,demand_UP = get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,DEMAND_PROFILE)
 
 #run the data validations 
 print(capacity_checks_of_plants(plant_units))
@@ -25,19 +26,14 @@ print(cost_checks_of_plant(plant_units))
 average_demand_dict=filling_missing_demand_withmean(demand_of_UP_bydate_byhour_units)
 demand_of_UP_bydate_byhour_units_filled,demand_values_filled = missing_demand_at_timeblock_level_and_filling(demand_of_UP_bydate_byhour_units,average_demand_dict)
 
-# output = ""
-# for demand_block in demand_of_UP_bydate_byhour_units_filled:
-#     output += str(demand_block.date)+ str(",")+str(demand_block.time_block)+str(",") +str(demand_block.demand_val)+str("\n")
-# with open('demand_by_timeblock.txt','w') as f:
-#     f.write(output)
 
 #reading optimization data 
-scheduling_hours, scheduling_dates, plant_names, plant_production_costs, plant_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas = reading_optimization_data(plant_units,demand_UP)
+scheduling_hours, scheduling_dates, plant_names, plant_production_costs,plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas = reading_optimization_data(plant_units,demand_UP)
 
 
 # ------------------optimization-----------------
 # creating optimization instance 
-prob = creating_optimization_instance(demand_values_filled,scheduling_hours, scheduling_dates, plant_names, plant_production_costs, plant_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas)
+prob = creating_optimization_instance(demand_values_filled,scheduling_hours, scheduling_dates, plant_names, plant_production_costs,plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas)
 
 #------------------checking the output validations----------------
 
@@ -59,7 +55,7 @@ capacity_constraint_checks = capacity_constraint_check(opti_solution_json,plant_
 df_json = pd.read_json(capacity_constraint_checks)
 
 
-opti_solution_location = OUTPUT_SOLUTION_FOLDER +"/"+ MONTH + "__opti_solution"+".csv"
+opti_solution_location = OUTPUT_SOLUTION_FOLDER +"/"+ MONTH + "__opti_solution_"+DEMAND_PROFILE+".csv"
 df_json.to_csv(opti_solution_location)
 
 #output of actuals in a csv for comparison with model 

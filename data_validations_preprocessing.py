@@ -12,6 +12,7 @@ def capacity_checks_of_plants(plant_units):
             return 'This plant unit has wrong capacity' + plant.name 
     return 'capacity checks done'
 
+
 def cost_checks_of_plant(plant_units):
     for plant in plant_units:
         if plant.average_variable_cost <= 0:

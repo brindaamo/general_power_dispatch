@@ -7,23 +7,25 @@ def reading_optimization_data(plant_units,demand_UP):
     
     plant_names = []
     plant_production_costs = {}
-    plant_capacity = {}
+    plant_upper_capacity = {}
+    plant_lower_capacity ={}
     plant_ramp_up_deltas = {}
     plant_ramp_down_deltas = {}
     for plant in plant_units:
         if(plant.average_variable_cost>0):
             plant_names.append(plant.name)
             plant_production_costs[plant.name] = plant.average_variable_cost
-            plant_capacity[plant.name] = plant.capacity
+            plant_upper_capacity[plant.name] = plant.upper_capacity
+            plant_lower_capacity[plant.name] = plant.lower_capacity
             plant_ramp_up_deltas[plant.name] = plant.ramp_up_delta
             plant_ramp_down_deltas[plant.name] = plant.ramp_down_delta
 
     scheduling_time_blocks = list(range(1,97))
     scheduling_dates =  sorted(demand_UP['date'].unique())
 
-    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas
+    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas
 
-def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas):
+def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas):
     
     #creating the LP problem instance
     prob = LpProblem("production_cost_minimization", LpMinimize)
@@ -46,12 +48,17 @@ def creating_optimization_instance(demand_values,scheduling_time_blocks, schedul
 
 
     # capacity constraint 
-    # capacity of the power plant cannot be exceeded at any hour
+    # capacity of the power plant cannot be exceeded at any time block
 
     for plant in plant_names:
         for date in scheduling_dates:
             for time_block in scheduling_time_blocks:
-                prob += production_vars[(plant,date,time_block)] <= plant_capacity[plant]
+                prob += production_vars[(plant,date,time_block)] <= plant_upper_capacity[plant]
+    
+    for plant in plant_names:
+        for date in scheduling_dates:
+            for time_block in scheduling_time_blocks:
+                prob += production_vars[(plant,date,time_block)] >= plant_lower_capacity[plant]
 
     #ramp up constraints 
     for plant in plant_names:
