@@ -83,7 +83,7 @@ def capacity_constraint_check(optimization_solution_json,plant_units):
         output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
     return json.dumps(optimization_solution_obj,  default = my_date_converter)
 
-def add_plant_percent_ramp_up_or_down(optimization_solution_json,plant_units):
+def add_plant_percent_ramp_up_or_down(optimization_solution_json):
     print('Adding percent ramp up/down to plant output data')
     optimization_solution_obj = json.loads(optimization_solution_json,object_hook=date_hook)
     for obj in optimization_solution_obj:     
