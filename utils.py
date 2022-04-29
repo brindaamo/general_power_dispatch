@@ -13,17 +13,24 @@ raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.
 COAL_RAMP_UP_PERCENT = 0.01
 COAL_RAMP_DOWN_PERCENT = 0.015
 COAL_EFFICIENCY_RATE = 0.55
-DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
-MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
-MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
-INFINITE_CAPACITY = 10000
+MINIMUM_CAPACITY = 0.45
+MAXIMUM_CAPACITY = 0.85
+DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 8, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 9, 1)
+MODEL_PERIOD_START_TIME = datetime(2021, 9, 1)
+MODEL_PERIOD_END_TIME = datetime(2021, 10, 1)
+INFINITE_CAPACITY = 12000
+#values accepted are 'high','base' and 'low'
+DEMAND_PROFILE = 'base'
+HIGH_PROFILE_FACTOR = 1.2
+LOW_PROFILE_FACTOR = 0.75
+BASE_PROFILE_FACTOR = 1
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
 
 #------------------CHANGE THIS INPUT-------------------------
 #-----------------name of the month--------------------------
-MONTH = "oct_2021"
+MONTH = "sep_2021"
 
 #------------------input file locations------------------------
 INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
@@ -69,12 +76,14 @@ def get_plant_characteristics(plant_unit_timeblocks):
             plant_ramp_down_delta = plant_data['upsldc_unit_capacity'].median()*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
             plant_data_row = plant_data.iloc[0]
             if plant_name == 'UP DRAWAL':
-                new_capacity = INFINITE_CAPACITY
+                upper_capacity = INFINITE_CAPACITY
+                lower_capacity = INFINITE_CAPACITY
             else:
-                new_capacity = 0.85*plant_data_row['upsldc_unit_capacity']
+                upper_capacity = MAXIMUM_CAPACITY*plant_data_row['upsldc_unit_capacity']
+                lower_capacity = MINIMUM_CAPACITY*plant_data_row['upsldc_unit_capacity']
 
             average_cost = plant_data['variable_cost'].mean()
-            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], new_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost))
+            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost))
            
             
     return plant_units
@@ -107,4 +116,21 @@ def get_demand_data(model_demand):
     return demand_of_UP_bydate_byhour_units,demand_UP
 
 
+
+def get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,demand_profile):
+
+    if demand_profile == 'high':
+        demand_UP['avg_unit_current_load'].multiply(HIGH_PROFILE_FACTOR)
+        for demand_of_UP_by_timeblock in demand_of_UP_bydate_byhour_units:
+          new_value = demand_of_UP_by_timeblock.demand_val*HIGH_PROFILE_FACTOR
+          demand_of_UP_by_timeblock.demand_val = new_value 
+    elif demand_profile == 'low':
+        demand_UP['avg_unit_current_load'].multiply(LOW_PROFILE_FACTOR)
+        for demand_of_UP_by_timeblock in demand_of_UP_bydate_byhour_units:
+            new_value = demand_of_UP_by_timeblock.demand_val*LOW_PROFILE_FACTOR
+            demand_of_UP_by_timeblock.demand_val = new_value 
+    elif demand_profile == 'base':
+        pass
+
+    return demand_of_UP_bydate_byhour_units,demand_UP
 
