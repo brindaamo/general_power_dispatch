@@ -15,11 +15,11 @@ COAL_RAMP_DOWN_PERCENT = 0.015
 COAL_EFFICIENCY_RATE = 0.55
 MINIMUM_CAPACITY = 0.45
 MAXIMUM_CAPACITY = 0.85
-DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 8, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 9, 1)
-MODEL_PERIOD_START_TIME = datetime(2021, 9, 1)
-MODEL_PERIOD_END_TIME = datetime(2021, 10, 1)
-INFINITE_CAPACITY = 12000
+DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
+MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
+MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
+INFINITE_CAPACITY = 10000
 #values accepted are 'high','base' and 'low'
 DEMAND_PROFILE = 'base'
 HIGH_PROFILE_FACTOR = 1.2
@@ -30,7 +30,7 @@ DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load'
 
 #------------------CHANGE THIS INPUT-------------------------
 #-----------------name of the month--------------------------
-MONTH = "sep_2021"
+MONTH = "oct_2021"
 
 #------------------input file locations------------------------
 INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
@@ -87,6 +87,15 @@ def get_plant_characteristics(plant_unit_timeblocks):
            
             
     return plant_units
+
+def add_new_plants(plant_units,name, ownership, fuel_type, capacity,average_variable_cost):
+    upper_capacity = MAXIMUM_CAPACITY*capacity
+    lower_capacity = MINIMUM_CAPACITY*capacity
+    plant_ramp_up_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
+    plant_ramp_down_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
+    plant_units.append(PlantUnits(name,ownership,fuel_type,capacity,lower_capacity,upper_capacity,plant_ramp_up_delta,plant_ramp_down_delta,average_variable_cost))
+
+    return plant_units 
 
 
 
