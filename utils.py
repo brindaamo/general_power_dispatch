@@ -2,6 +2,7 @@ from datetime import datetime
 from plant_model import PlantUnits
 import pandas as pd
 from demand_model import Demand
+import numpy as np
 
 raw_data = pd.read_csv("RawData/upsldc_plant_unit_time_block.csv")
 raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.date
@@ -10,16 +11,20 @@ raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.
 # start and end date of developmental window
 #start and end of testing window 
 #coal_ramp_up_
-COAL_RAMP_UP_PERCENT = 0.01
-COAL_RAMP_DOWN_PERCENT = 0.015
-COAL_EFFICIENCY_RATE = 0.55
-MINIMUM_CAPACITY = 0.45
-MAXIMUM_CAPACITY = 0.85
+COAL_RAMP_UP_PERCENT = 0.13
+COAL_RAMP_DOWN_PERCENT = 0.13
+COAL_EFFICIENCY_RATE = 1
+BASE_OR_PEAK_COST_CUT_OFF = 3
+MINIMUM_BASE_PLANT_CAPACITY = 0.70
+MAXIMUM_BASE_PLANT_CAPACITY = 1
+MINIMUM_PEAK_PLANT_CAPACITY = 0.45
+MAXIMUM_PEAK_PLANT_CAPACITY = 1
 DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
 DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
 MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
 MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
 INFINITE_CAPACITY = 10000
+MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base' and 'low'
 DEMAND_PROFILE = 'base'
 HIGH_PROFILE_FACTOR = 1.2
@@ -60,7 +65,7 @@ def get_raw_data_by_time(raw_data,start_time, end_time):
         (raw_data["data_capture_time_block_start"] >= start_time_str)
         & (raw_data["data_capture_time_block_start"] < end_time_str)
     ]
-
+    
 
 #this function is used to get the plant characteristics
 def get_plant_characteristics(plant_unit_timeblocks):
@@ -72,30 +77,50 @@ def get_plant_characteristics(plant_unit_timeblocks):
         if plant_name != "OTHER RENEWABLE":
             plant_unit_num = int(splitter[1])
             plant_data = plant_unit_timeblocks[(plant_unit_timeblocks['plant_name'] == plant_name) & (plant_unit_timeblocks['actual_plant_unit'] == plant_unit_num)]
-            plant_ramp_up_delta = plant_data['upsldc_unit_capacity'].median()*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
-            plant_ramp_down_delta = plant_data['upsldc_unit_capacity'].median()*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
+            plant_ramp_up_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
+            plant_ramp_down_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
             plant_data_row = plant_data.iloc[0]
+            average_cost = plant_data['variable_cost'].mean()
             if plant_name == 'UP DRAWAL':
                 upper_capacity = INFINITE_CAPACITY
-                lower_capacity = INFINITE_CAPACITY
-            else:
-                upper_capacity = MAXIMUM_CAPACITY*plant_data_row['upsldc_unit_capacity']
-                lower_capacity = MINIMUM_CAPACITY*plant_data_row['upsldc_unit_capacity']
+                lower_capacity = MINIMUM_UP_DRAWAL
+                base_or_peak = 'peak'
+                plant_ramp_up_delta = upper_capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
+                plant_ramp_down_delta = upper_capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
 
-            average_cost = plant_data['variable_cost'].mean()
-            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost))
+            else:
+                if average_cost<3:
+                    upper_capacity = MAXIMUM_BASE_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
+                    lower_capacity = MINIMUM_BASE_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
+                    base_or_peak = 'base'
+                else:
+                    upper_capacity = MAXIMUM_PEAK_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
+                    lower_capacity = MINIMUM_PEAK_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
+                    base_or_peak = 'peak'
+
+
+            
+            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak))
            
             
     return plant_units
 
 def add_new_plants(plant_units,name, ownership, fuel_type, capacity,average_variable_cost):
-    upper_capacity = MAXIMUM_CAPACITY*capacity
-    lower_capacity = MINIMUM_CAPACITY*capacity
+    if average_variable_cost<3:
+        upper_capacity = MAXIMUM_BASE_PLANT_CAPACITY*capacity
+        lower_capacity = MINIMUM_BASE_PLANT_CAPACITY*capacity
+        base_or_peak = 'base'
+    else:
+        upper_capacity = MAXIMUM_PEAK_PLANT_CAPACITY*capacity
+        lower_capacity = MINIMUM_PEAK_PLANT_CAPACITY*capacity
+        base_or_peak = 'peak'
+
     plant_ramp_up_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
     plant_ramp_down_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
-    plant_units.append(PlantUnits(name,ownership,fuel_type,capacity,lower_capacity,upper_capacity,plant_ramp_up_delta,plant_ramp_down_delta,average_variable_cost))
+    plant_units.append(PlantUnits(name,ownership,fuel_type,capacity,lower_capacity,upper_capacity,plant_ramp_up_delta,plant_ramp_down_delta,average_variable_cost,base_or_peak))
 
     return plant_units 
+
 
 
 

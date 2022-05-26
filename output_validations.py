@@ -78,7 +78,8 @@ def capacity_constraint_check(optimization_solution_json,plant_units):
                 obj['avg_variable_cost'] = plant.average_variable_cost 
                 obj['production_cost'] = plant.average_variable_cost*obj['production']
                 obj['high_capacity_flag'] = float(obj['production']) >= float(plant.capacity)
-                obj['capacity_percent'] = (float(obj['production']) / float(plant.capacity)) * 100
+                obj['PLF'] = (float(obj['production']) / float(plant.capacity)) 
+                obj['group'] = plant.base_or_peak_plant
     with open("optimization_solution_json.json","w") as output_file:
         output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
     return json.dumps(optimization_solution_obj,  default = my_date_converter)

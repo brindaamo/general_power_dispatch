@@ -62,31 +62,31 @@ def creating_optimization_instance(demand_values,scheduling_time_blocks, schedul
 
     #ramp up constraints 
     for plant in plant_names:
-        if plant != 'UP DRAWAL unit:0':
-            for date in scheduling_dates:
-                for time_block in scheduling_time_blocks[:-1]:
-                    prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= plant_ramp_up_deltas[plant]
+        # if plant != 'UP DRAWAL unit:0':
+        for date in scheduling_dates:
+            for time_block in scheduling_time_blocks[:-1]:
+                prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= plant_ramp_up_deltas[plant]
 
     #ramp up constraints for the last time block connecting to the next day
     for plant in plant_names:
-        if plant != 'UP DRAWAL unit:0':
-            for today in scheduling_dates[:-1]:
-                tomorrow = today+timedelta(1)
-                prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= plant_ramp_up_deltas[plant]
+        # if plant != 'UP DRAWAL unit:0':
+        for today in scheduling_dates[:-1]:
+            tomorrow = today+timedelta(1)
+            prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= plant_ramp_up_deltas[plant]
 
     #ramp down constraints 
     for plant in plant_names:
-        if plant != 'UP DRAWAL unit:0':
-            for date in scheduling_dates:
-                for time_block in scheduling_time_blocks[:-1]:
-                    prob +=  production_vars[(plant,date,time_block)] - production_vars[(plant,date,time_block+1)]<= plant_ramp_down_deltas[plant]
+        # if plant != 'UP DRAWAL unit:0':
+        for date in scheduling_dates:
+            for time_block in scheduling_time_blocks[:-1]:
+                prob +=  production_vars[(plant,date,time_block)] - production_vars[(plant,date,time_block+1)]<= plant_ramp_down_deltas[plant]
 
     #ramp down constraints for the last time block connecting to the next day
     for plant in plant_names:
-        if plant != 'UP DRAWAL unit:0':
-            for today in scheduling_dates[:-1]:
-                tomorrow = today+timedelta(1)
-                prob += production_vars[(plant,today,96)] - production_vars[(plant,tomorrow,1)]<= plant_ramp_down_deltas[plant]
+        # if plant != 'UP DRAWAL unit:0':
+        for today in scheduling_dates[:-1]:
+            tomorrow = today+timedelta(1)
+            prob += production_vars[(plant,today,96)] - production_vars[(plant,tomorrow,1)]<= plant_ramp_down_deltas[plant]
 
         return prob
 
