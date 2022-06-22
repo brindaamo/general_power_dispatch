@@ -3,14 +3,15 @@ from plant_model import PlantUnits
 import pandas as pd
 from demand_model import Demand
 import numpy as np
+import csv
+import re
 
 raw_data = pd.read_csv("RawData/upsldc_plant_unit_time_block.csv")
 raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.date
 
 #this function is to get the inputs needed for running the model. 
-# start and end date of developmental window
-#start and end of testing window 
-#coal_ramp_up_
+#accepted values are 'cost' and 'effeciency'
+OBJECTIVE_FUCTION = 'cost'
 COAL_RAMP_UP_PERCENT = 0.13
 COAL_RAMP_DOWN_PERCENT = 0.13
 COAL_EFFICIENCY_RATE = 1
@@ -19,8 +20,13 @@ MINIMUM_BASE_PLANT_CAPACITY = 0.70
 MAXIMUM_BASE_PLANT_CAPACITY = 1
 MINIMUM_PEAK_PLANT_CAPACITY = 0.45
 MAXIMUM_PEAK_PLANT_CAPACITY = 1
+OBJECTIVE = 'cost'
+
+# start and end date of developmental window
 DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
 DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
+
+#start and end of testing window 
 MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
 MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
 INFINITE_CAPACITY = 10000
@@ -30,6 +36,7 @@ DEMAND_PROFILE = 'base'
 HIGH_PROFILE_FACTOR = 1.2
 LOW_PROFILE_FACTOR = 0.75
 BASE_PROFILE_FACTOR = 1
+
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
 
@@ -40,6 +47,7 @@ MONTH = "oct_2021"
 #------------------input file locations------------------------
 INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
 INPUT_MAPPING_TIMEBLOCKS_TO_HOURS = "RawData/hours_timeblock_mapping.csv"
+INPUT_THERMAL_EFFECIENCY_FILE_NAME = "RawData/thermal_effeciencies.csv"
 
 #-------------------output_file_locations-----------------------
 OUTPUT_SOLUTION_FOLDER = "output_files"
@@ -100,11 +108,28 @@ def get_plant_characteristics(plant_unit_timeblocks):
 
 
             
-            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak))
+            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak,None))
            
             
     return plant_units
 
+def get_only_thermal_power_plant(plant_units):
+    thermal_plant_units = []
+    for plant in plant_units:
+        if plant.fuel_type == 'THERMAL' or plant.fuel_type == 'ALL CENTRAL':
+            thermal_plant_units.append(plant)
+    return thermal_plant_units
+            
+
+def assign_hydro_as_peak(plant_units):
+    for plant in plant_units:
+        if(plant.fuel_type=='HYDRO'):
+            plant.base_or_peak_plant = 'peak'
+            plant.upper_capacity = MAXIMUM_PEAK_PLANT_CAPACITY*plant.capacity
+            plant.lower_capacity = MINIMUM_PEAK_PLANT_CAPACITY*plant.capacity
+    return None
+
+        
 def add_new_plants(plant_units,name, ownership, fuel_type, capacity,average_variable_cost):
     if average_variable_cost<3:
         upper_capacity = MAXIMUM_BASE_PLANT_CAPACITY*capacity
@@ -117,9 +142,27 @@ def add_new_plants(plant_units,name, ownership, fuel_type, capacity,average_vari
 
     plant_ramp_up_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
     plant_ramp_down_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
-    plant_units.append(PlantUnits(name,ownership,fuel_type,capacity,lower_capacity,upper_capacity,plant_ramp_up_delta,plant_ramp_down_delta,average_variable_cost,base_or_peak))
+    plant_units.append(PlantUnits(name,ownership,fuel_type,capacity,lower_capacity,upper_capacity,plant_ramp_up_delta,plant_ramp_down_delta,average_variable_cost,base_or_peak,None))
 
     return plant_units 
+
+def get_thermal_effeciency(thermal_effeciencies_in_a_csv,thermal_plants):
+    with open(thermal_effeciencies_in_a_csv, mode='r',encoding='utf-8-sig') as infile:
+        reader = csv.reader(infile)
+        thermal_effeciency = dict((rows[0],float(rows[1])) for rows in reader)
+
+    avg_thermal_effeciency = sum(thermal_effeciency.values())/len(thermal_effeciency)
+
+    for plant in thermal_plants:
+        splitter = plant.name.split(" unit:")
+        formatted_name = re.sub(r"(\s)|(-)", "_", splitter[0])
+        if formatted_name in thermal_effeciency.keys():
+            plant.plant_thermal_effeciency = thermal_effeciency[formatted_name]
+        else:
+            plant.plant_thermal_effeciency = avg_thermal_effeciency
+
+    return None
+
 
 
 
@@ -127,21 +170,9 @@ def add_new_plants(plant_units,name, ownership, fuel_type, capacity,average_vari
 #This function is used to clean up the demand and get the demand units. Removing the demand satisfied by other renewables 
 
 def get_demand_data(model_demand):
-
-    model_demand_noren= model_demand[~model_demand.plant_name.isin(["OTHER RENEWABLE"])]
-    demand_UP_noren = model_demand_noren[DEMAND_LEVEL]
-    demand_UP_noren = demand_UP_noren.groupby(TIME_LEVEL).sum().reset_index()
-    demand_UP_noren = demand_UP_noren.rename(columns ={'avg_unit_current_load':'avg_unit_current_load_noren'})
-
-    model_demand_withren= model_demand[model_demand.plant_name.isin(["OTHER RENEWABLE"])]
-    demand_UP_ren = model_demand_withren[DEMAND_LEVEL]
-    demand_UP_ren = demand_UP_ren.groupby(TIME_LEVEL).sum().reset_index()
-    demand_UP_ren = demand_UP_ren.rename(columns ={"avg_unit_current_load":"avg_unit_current_load_ren"})
-
-    demand_UP = demand_UP_noren.merge(demand_UP_ren,on=TIME_LEVEL,how='left',suffixes=('','_right'))
-    demand_UP['avg_unit_current_load'] = demand_UP['avg_unit_current_load_noren'].subtract(demand_UP['avg_unit_current_load_ren'],fill_value=0)
-    demand_UP = demand_UP[DEMAND_LEVEL]
-    
+    demand= model_demand[~model_demand.plant_fuel_type.isin(["RENEWABLE"])]
+    demand_without_other_ren = demand.groupby(TIME_LEVEL).sum().reset_index()
+    demand_UP = demand_without_other_ren[DEMAND_LEVEL]
 
     demand_of_UP_bydate_byhour_units = []
     for index,demand_row in demand_UP.iterrows():
@@ -149,6 +180,17 @@ def get_demand_data(model_demand):
     
     return demand_of_UP_bydate_byhour_units,demand_UP
 
+   
+def demand_with_only_thermal(model_demand):
+    demand = model_demand[(model_demand['plant_fuel_type']=='THERMAL') | (model_demand['plant_fuel_type']=='ALL CENTRAL')]
+    demand_without_hydro = demand.groupby(TIME_LEVEL).sum().reset_index()
+    demand_without_hydro = demand_without_hydro[DEMAND_LEVEL]
+
+    demand_of_UP_bydate_byhour_units = []
+    for index,demand_row in demand_without_hydro.iterrows():
+        demand_of_UP_bydate_byhour_units.append(Demand(demand_row['date'],demand_row['hour_of_day'],demand_row['time_block_of_day'],demand_row['avg_unit_current_load'],str(demand_row['date'])+"-"+str(demand_row['time_block_of_day'])))
+    
+    return demand_of_UP_bydate_byhour_units,demand_without_hydro
 
 
 def get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,demand_profile):
@@ -167,4 +209,9 @@ def get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,deman
         pass
 
     return demand_of_UP_bydate_byhour_units,demand_UP
+
+
+
+
+
 

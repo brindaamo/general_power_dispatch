@@ -1,12 +1,14 @@
+from pickle import OBJ
 from pulp import *
 from datetime import timedelta
 
-from utils import MONTH
+from utils import MONTH,OBJECTIVE
 
 def reading_optimization_data(plant_units,demand_UP):
     
     plant_names = []
     plant_production_costs = {}
+    plant_thermal_effeciencies = {}
     plant_upper_capacity = {}
     plant_lower_capacity ={}
     plant_ramp_up_deltas = {}
@@ -15,6 +17,7 @@ def reading_optimization_data(plant_units,demand_UP):
         if(plant.average_variable_cost>0):
             plant_names.append(plant.name)
             plant_production_costs[plant.name] = plant.average_variable_cost
+            plant_thermal_effeciencies[plant.name] = plant.plant_thermal_effeciency
             plant_upper_capacity[plant.name] = plant.upper_capacity
             plant_lower_capacity[plant.name] = plant.lower_capacity
             plant_ramp_up_deltas[plant.name] = plant.ramp_up_delta
@@ -23,24 +26,31 @@ def reading_optimization_data(plant_units,demand_UP):
     scheduling_time_blocks = list(range(1,97))
     scheduling_dates =  sorted(demand_UP['date'].unique())
 
-    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas
+    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas
 
-def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas):
+def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas):
     
     #creating the LP problem instance
-    prob = LpProblem("production_cost_minimization", LpMinimize)
+    if OBJECTIVE == 'cost':
+        prob = LpProblem("production_cost_minimization", LpMinimize)
+    elif OBJECTIVE == 'effeciency':
+        prob = LpProblem("effienciecy_maximization", LpMinimize)
 
     #Creating the production variables
     production_vars = LpVariable.dicts(name = "production_units",indices = [(i,j,k) for i in plant_names for j in scheduling_dates for k in scheduling_time_blocks],lowBound=0)
 
     #LP Objective function 
-    prob += lpSum([plant_production_costs[i]*production_vars[(i,j,k)] for i in plant_names for j in scheduling_dates for k in scheduling_time_blocks]), "Sum of production costs"
+    if OBJECTIVE == 'cost':
+        prob += lpSum([plant_production_costs[i]*production_vars[(i,j,k)] for i in plant_names for j in scheduling_dates for k in scheduling_time_blocks]), "Sum of production costs"
+    elif OBJECTIVE == 'effeciency':
+        prob += lpSum([plant_thermal_effeciencies[i]*production_vars[(i,j,k)] for i in plant_names for j in scheduling_dates for k in scheduling_time_blocks]), "Sum of production costs"
+
 
     #Adding constraints to the model
     #Demand constraints
     #for every date, every hour, demand[date][hour] has to be satisfied
     
-
+    
     for date in scheduling_dates:
         for time_block in scheduling_time_blocks:
             demand_date_timeblock = str(date) + "-"+str(time_block)
