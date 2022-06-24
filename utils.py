@@ -23,12 +23,12 @@ MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 
 # start and end date of developmental window
-DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 3, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 4, 1)
 
 #start and end of testing window 
-MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
-MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
+MODEL_PERIOD_START_TIME = datetime(2021, 4, 1)
+MODEL_PERIOD_END_TIME = datetime(2021, 5, 1)
 INFINITE_CAPACITY = 10000
 MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base' and 'low'
@@ -42,7 +42,7 @@ DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load'
 
 #------------------CHANGE THIS INPUT-------------------------
 #-----------------name of the month--------------------------
-MONTH = "oct_2021"
+MONTH = "april_2021"
 
 #------------------input file locations------------------------
 INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"

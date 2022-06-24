@@ -69,9 +69,9 @@ output_plant_chars_added_to_json = pd.read_json(output_plant_chars_added)
 opti_solution_location = OUTPUT_SOLUTION_FOLDER +"/"+ MONTH + "__opti_solution_"+DEMAND_PROFILE+"_"+str(datetime.now().date())+".csv"
 output_plant_chars_added_to_json.to_csv(opti_solution_location,index=False)
 
-# # # #output of actuals in a csv for comparison with model 
-# # # # actuals_location = OUTPUT_ACTUALS_FOLDER +"/"+ MONTH +"_actuals"+ ".csv"
-# # # # model_data.to_csv(actuals_location)
+#output of actuals in a csv for comparison with model 
+actuals_location = OUTPUT_ACTUALS_FOLDER +"/"+ MONTH +"_actuals"+ ".csv"
+model_data.to_csv(actuals_location)
 
 
 
