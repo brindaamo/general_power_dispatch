@@ -23,12 +23,12 @@ MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 
 # start and end date of developmental window
-DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 3, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 4, 1)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 3, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 4, 1)
 
 #start and end of testing window 
-MODEL_PERIOD_START_TIME = datetime(2021, 4, 1)
-MODEL_PERIOD_END_TIME = datetime(2021, 5, 1)
+MODEL_PERIOD_START_TIME = datetime(2022, 4, 1)
+MODEL_PERIOD_END_TIME = datetime(2022, 5, 1)
 INFINITE_CAPACITY = 10000
 MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base' and 'low'
@@ -42,10 +42,10 @@ DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load'
 
 #------------------CHANGE THIS INPUT-------------------------
 #-----------------name of the month--------------------------
-MONTH = "april_2021"
+MONTH = "apr_2022"
 
 #------------------input file locations------------------------
-INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
+INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block_20220301_20220621.csv"
 INPUT_MAPPING_TIMEBLOCKS_TO_HOURS = "RawData/hours_timeblock_mapping.csv"
 INPUT_THERMAL_EFFECIENCY_FILE_NAME = "RawData/thermal_effeciencies.csv"
 
@@ -59,6 +59,7 @@ OUTPUT_ACTUALS_FOLDER = "output_files"
 #this function will read the UPSLDC input file from the location (this is the data for the whole time period.)
 def reading_input_data(file_name):
     raw_data = pd.read_csv(file_name)
+    raw_data['data_capture_time_block_start'] = pd.to_datetime(raw_data['data_capture_time_block_start'])
     raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.date
     return raw_data
 

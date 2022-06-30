@@ -102,7 +102,7 @@ def add_plant_ramp_up_and_down(output_plant_chars_add,scheduling_time_blocks, sc
                     name_date_time_block_plus_one = formatted_name+","+str(date)+","+str(time_block+1) 
                     if name_date_time_block in plant_name_date_time_bucket.keys():
                         if name_date_time_block_plus_one in plant_name_date_time_bucket.keys():
-                            ramp_rates[name_date_time_block] = (plant_name_date_time_bucket[name_date_time_block_plus_one]['production'] - plant_name_date_time_bucket[name_date_time_block]['production'])/plant_name_date_time_bucket[name_date_time_block]['production']
+                            ramp_rates[name_date_time_block] = (plant_name_date_time_bucket[name_date_time_block_plus_one]['model_production'] - plant_name_date_time_bucket[name_date_time_block]['model_production'])/plant_name_date_time_bucket[name_date_time_block]['model_production']
             
     for plant in plant_names:
         formatted_name = plant.replace(" ","_").replace("-","_")
@@ -112,9 +112,24 @@ def add_plant_ramp_up_and_down(output_plant_chars_add,scheduling_time_blocks, sc
             name_date_time_block_plus_one = formatted_name+","+str(tomorrow)+","+str(1) 
             if name_date_time_block in plant_name_date_time_bucket.keys():
                 if name_date_time_block_plus_one in plant_name_date_time_bucket.keys():
-                  ramp_rates[name_date_time_block] = (plant_name_date_time_bucket[name_date_time_block_plus_one]['production'] - plant_name_date_time_bucket[name_date_time_block]['production'])/plant_name_date_time_bucket[name_date_time_block]['production']
+                  ramp_rates[name_date_time_block] = (plant_name_date_time_bucket[name_date_time_block_plus_one]['model_production'] - plant_name_date_time_bucket[name_date_time_block]['model_production'])/plant_name_date_time_bucket[name_date_time_block]['model_production']
+    return ramp_rates
     
+def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates,plant_names):
+    opti_solution_json = output_formatting(optimization_solution='optimization_solution_with_new_constraints.txt')
+    output_plant_chars_add = output_plant_chars(opti_solution_json,plant_units)
+    output_plant_chars_added = pd.read_json(output_plant_chars_add)
+    ramp_rates = add_plant_ramp_up_and_down(output_plant_chars_add,scheduling_time_blocks, scheduling_dates, plant_names)
+
+    ramp_rates_in_a_df = pd.DataFrame(ramp_rates.items(),columns = ['plant_date_time','ramp_rate'])
     
+    ramp_rates_in_a_df[['model_plant_name','date','time_bucket']]=ramp_rates_in_a_df['plant_date_time'].str.split(',', expand=True)
+    ramp_rates_in_a_df['time_bucket'] = ramp_rates_in_a_df['time_bucket'].astype(int)
+    ramp_rates_in_a_df['date'] = pd.to_datetime(ramp_rates_in_a_df['date'])
+    ramp_rates_in_a_df = ramp_rates_in_a_df.drop(columns='plant_date_time')
+
+    opti_output = output_plant_chars_added.merge(ramp_rates_in_a_df,on=['model_plant_name','date','time_bucket'],how='left')
+    return opti_output
 
 # # def add_plant_percent_ramp_up_or_down(optimization_solution_json):
 #     print('Adding percent ramp up/down to plant output data')
