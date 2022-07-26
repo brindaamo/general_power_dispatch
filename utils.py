@@ -23,12 +23,12 @@ MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 
 # start and end date of developmental window
-DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 3, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 4, 1)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
 
 #start and end of testing window 
-MODEL_PERIOD_START_TIME = datetime(2022, 4, 1)
-MODEL_PERIOD_END_TIME = datetime(2022, 5, 1)
+MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
+MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
 INFINITE_CAPACITY = 10000
 MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base' and 'low'
@@ -37,17 +37,19 @@ HIGH_PROFILE_FACTOR = 1.2
 LOW_PROFILE_FACTOR = 0.75
 BASE_PROFILE_FACTOR = 1
 
+PLANT_UNIT_LEVEL = ['plant_name','actual_plant_unit']
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
 
 #------------------CHANGE THIS INPUT-------------------------
 #-----------------name of the month--------------------------
-MONTH = "apr_2022"
+MONTH = "oct_2021"
 
 #------------------input file locations------------------------
-INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block_20220301_20220621.csv"
+INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
 INPUT_MAPPING_TIMEBLOCKS_TO_HOURS = "RawData/hours_timeblock_mapping.csv"
 INPUT_THERMAL_EFFECIENCY_FILE_NAME = "RawData/thermal_effeciencies.csv"
+INPUT_FIXED_COSTS_DATA = "RawData/fixed_costs.csv"
 
 #-------------------output_file_locations-----------------------
 OUTPUT_SOLUTION_FOLDER = "output_files"
@@ -74,7 +76,7 @@ def get_raw_data_by_time(raw_data,start_time, end_time):
         (raw_data["data_capture_time_block_start"] >= start_time_str)
         & (raw_data["data_capture_time_block_start"] < end_time_str)
     ]
-    
+
 
 #this function is used to get the plant characteristics
 def get_plant_characteristics(plant_unit_timeblocks):
@@ -90,6 +92,10 @@ def get_plant_characteristics(plant_unit_timeblocks):
             plant_ramp_down_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
             plant_data_row = plant_data.iloc[0]
             average_cost = plant_data['variable_cost'].mean()
+
+            #getting the lower capacities 
+            lower_capacity = plant_data.groupby('date').agg({'avg_unit_current_load':'min'}).reset_index()['avg_unit_current_load'].median()
+
             if plant_name == 'UP DRAWAL':
                 upper_capacity = INFINITE_CAPACITY
                 lower_capacity = MINIMUM_UP_DRAWAL
@@ -100,11 +106,9 @@ def get_plant_characteristics(plant_unit_timeblocks):
             else:
                 if average_cost<3:
                     upper_capacity = MAXIMUM_BASE_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
-                    lower_capacity = MINIMUM_BASE_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
                     base_or_peak = 'base'
                 else:
                     upper_capacity = MAXIMUM_PEAK_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
-                    lower_capacity = MINIMUM_PEAK_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
                     base_or_peak = 'peak'
 
 
@@ -143,7 +147,7 @@ def add_new_plants(plant_units,name, ownership, fuel_type, capacity,average_vari
 
     plant_ramp_up_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
     plant_ramp_down_delta = capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
-    plant_units.append(PlantUnits(name,ownership,fuel_type,capacity,lower_capacity,upper_capacity,plant_ramp_up_delta,plant_ramp_down_delta,average_variable_cost,base_or_peak,None))
+    plant_units.append(PlantUnits(name,ownership,fuel_type,capacity,None,lower_capacity,upper_capacity,plant_ramp_up_delta,plant_ramp_down_delta,average_variable_cost,base_or_peak,None,None,None))
 
     return plant_units 
 
@@ -163,8 +167,6 @@ def get_thermal_effeciency(thermal_effeciencies_in_a_csv,thermal_plants):
             plant.plant_thermal_effeciency = avg_thermal_effeciency
 
     return None
-
-
 
 
 
@@ -210,6 +212,24 @@ def get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,deman
         pass
 
     return demand_of_UP_bydate_byhour_units,demand_UP
+
+def get_peak_demand(demand_UP):
+    peak_demand_by_date = demand_UP.groupby('date').agg({'avg_unit_current_load',max}).reset_index().set_index('date').T.to_dict(list)
+    return peak_demand_by_date
+
+def get_fixed_costs(fixed_costs_file):
+    return pd.read_csv(fixed_costs_file).set_index(['plant_capacity','start_type']).T.to_dict()
+
+def get_start_type(development_data):
+    
+
+    return None 
+
+
+
+
+
+
 
 
 

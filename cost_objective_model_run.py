@@ -20,12 +20,6 @@ thermal_plants = get_only_thermal_power_plant(plant_units)
 get_thermal_effeciency(INPUT_THERMAL_EFFECIENCY_FILE_NAME,thermal_plants)
 assign_hydro_as_peak(plant_units)
 
-#RUN THIS FUNCTION TO ADD NEW PLANTS UNITS WITH THE RIGHT VALUES 
-#name, ownership, fuel_type, capacity,average_variable_cost - THIS IS THE INFORMATION THAT IS NEEDED 
-#adding new plant units into the model
-
-# plant_units = add_new_plants(plant_units,name='something', ownership='something', fuel_type='something', capacity=100,average_variable_cost=2)
-
 
 #getting demand data 
 demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
@@ -66,7 +60,7 @@ opti_output = converting_outputs_to_df(plant_units,scheduling_time_blocks,schedu
 opti_solution_location = OUTPUT_SOLUTION_FOLDER +"/"+ MONTH + "__opti_solution_"+DEMAND_PROFILE+"_"+str(datetime.now().date())+".csv"
 opti_output.to_csv(opti_solution_location,index=False)
 
-#output of actuals in a csv for comparison with model 
+# output of actuals in a csv for comparison with model 
 # actuals_location = OUTPUT_ACTUALS_FOLDER +"/"+ MONTH +"_actuals"+ ".csv"
 # model_data.to_csv(actuals_location)
 

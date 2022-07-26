@@ -32,6 +32,12 @@ def output_formatting(optimization_solution):
         # output_file.write(json.dumps(optimization_solution_json_data, default = my_date_time_converter))
     return json.dumps(optimization_solution_json_data, default = my_date_time_converter)
 
+def output_formatting_primary_opti_solution():
+    #input will be a string of the format choose_plants 
+    #output should be {'plant_unit_name':'plant_unit_production_units'}
+    return None
+
+
 def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units):
     #first input parameter needs to be changed to optimization output formatted
     #demand of UP by hour needs to be satisfied summed across plant units
@@ -61,8 +67,6 @@ def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP
 
 
 def output_plant_chars(optimization_solution_json,plant_units):
-    #every plant needs to run at a capacity that is not exceeding the maximum capacity of the plant
-    #the percentage at which the plant is working at
     optimization_solution_obj = json.loads(optimization_solution_json,object_hook=date_hook)
     for obj in optimization_solution_obj:
         for plant in plant_units:
@@ -130,28 +134,6 @@ def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates
 
     opti_output = output_plant_chars_added.merge(ramp_rates_in_a_df,on=['model_plant_name','date','time_bucket'],how='left')
     return opti_output
-
-# # def add_plant_percent_ramp_up_or_down(optimization_solution_json):
-#     print('Adding percent ramp up/down to plant output data')
-#     optimization_solution_obj = json.loads(optimization_solution_json,object_hook=date_hook)
-#     for obj in optimization_solution_obj:     
-#         if int(obj['time_bucket']) == 1:
-#             prev_date = obj['date'] - timedelta(days=1)
-#             prev_time_block_data = [x for x in optimization_solution_obj 
-#             if x['plant_name'] == obj['plant_name']
-#             and  x['date'] == prev_date 
-#             and int(x['time_bucket']) == 96]
-#         else:
-#             prev_time_block_data = [x for x in optimization_solution_obj 
-#             if x['plant_name'] == obj['plant_name']
-#             and  x['date'] == obj['date'] 
-#             and int(x['time_bucket']) == int(obj['time_bucket'])-1]
-#         if len(prev_time_block_data) > 0:
-#             #print(prev_time_block_data[0])
-#             obj['percent_ramp_up_or_down'] = round((obj['production'] - prev_time_block_data[0]['production'])/obj['production'] * 100, 3)
-#     with open("optimization_solution_json.json","w") as output_file:
-#         output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
-#     return json.dumps(optimization_solution_obj,  default = my_date_converter)
 
 
 #This method is used to convert datetime to string while parsing to json in code
