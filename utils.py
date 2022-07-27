@@ -217,10 +217,45 @@ def get_peak_demand(demand_UP):
     peak_demand_by_date = demand_UP.groupby('date').agg({'avg_unit_current_load',max}).reset_index().set_index('date').T.to_dict(list)
     return peak_demand_by_date
 
+#this function reads the optimization data
+def reading_optimization_data(plant_units,demand_UP,fixed_costs):
+    
+    plant_names = []
+    plant_production_costs = {}
+    plant_thermal_effeciencies = {}
+    plant_upper_capacity = {}
+    plant_lower_capacity ={}
+    plant_ramp_up_deltas = {}
+    plant_ramp_down_deltas = {}
+    plant_fixed_costs = {}
+    for plant in plant_units:
+        if(plant.average_variable_cost>0):
+            plant_names.append(plant.name)
+            plant_production_costs[plant.name] = plant.average_variable_cost
+            plant_thermal_effeciencies[plant.name] = plant.plant_thermal_effeciency
+            plant_upper_capacity[plant.name] = plant.upper_capacity
+            plant_lower_capacity[plant.name] = plant.lower_capacity
+            plant_ramp_up_deltas[plant.name] = plant.ramp_up_delta
+            plant_ramp_down_deltas[plant.name] = plant.ramp_down_delta
+            plant_fixed_costs[plant.name] = fixed_costs[(plant.fixed_cost_capacity_bucket,plant.start_type)]
+
+    scheduling_time_blocks = list(range(1,97))
+    scheduling_dates =  sorted(demand_UP['date'].unique())
+    
+
+    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas
+
+
 def get_fixed_costs(fixed_costs_file):
     return pd.read_csv(fixed_costs_file).set_index(['plant_capacity','start_type']).T.to_dict()
 
-def get_start_type(development_data):
+def get_start_type(selected_power_plant_units):
+
+
+    for power_plant in selected_power_plant_units:
+        reading_optimization_data
+
+        
     
 
     return None 
