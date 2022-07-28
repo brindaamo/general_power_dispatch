@@ -32,10 +32,18 @@ def output_formatting(optimization_solution):
         # output_file.write(json.dumps(optimization_solution_json_data, default = my_date_time_converter))
     return json.dumps(optimization_solution_json_data, default = my_date_time_converter)
 
-def output_formatting_primary_opti_solution():
-    #input will be a string of the format choose_plants 
+def output_formatting_primary_opti_solution(inputData):
     #output should be {'plant_unit_name':'plant_unit_production_units'}
-    return None
+    output_dictionary = {}  
+    #input will be a string of the format choose_plants 
+    splitData = inputData.split("\n")
+    for arrayLength in range(len(splitData)):
+        if(splitData[arrayLength].find("productionUnits")!=-1):
+            outputDataSplitArray = splitData[arrayLength].rsplit(",_")[1].rsplit("=")
+            output_dictionary[outputDataSplitArray[0]] = outputDataSplitArray[1]
+    #output should be {'plant_unit_name':'plant_unit_production_units'}        
+    print(output_dictionary)
+    return output_dictionary
 
 
 def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units):
