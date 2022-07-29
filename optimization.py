@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from utils import MONTH,OBJECTIVE
 
+#this function reads the optimization data
 def reading_optimization_data(plant_units,demand_UP,fixed_costs):
     
     plant_names = []

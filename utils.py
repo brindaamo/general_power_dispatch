@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime,timedelta
 from plant_model import PlantUnits
 import pandas as pd
 from demand_model import Demand
@@ -23,7 +23,7 @@ MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 
 # start and end date of developmental window
-DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 9, 1)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 6, 1)
 DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
 
 #start and end of testing window 
@@ -113,7 +113,7 @@ def get_plant_characteristics(plant_unit_timeblocks):
 
 
             
-            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak,None))
+            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak))
            
             
     return plant_units
@@ -217,48 +217,81 @@ def get_peak_demand(demand_UP):
     peak_demand_by_date = demand_UP.groupby('date').agg({'avg_unit_current_load',max}).reset_index().set_index('date').T.to_dict(list)
     return peak_demand_by_date
 
-#this function reads the optimization data
-def reading_optimization_data(plant_units,demand_UP,fixed_costs):
-    
-    plant_names = []
-    plant_production_costs = {}
-    plant_thermal_effeciencies = {}
-    plant_upper_capacity = {}
-    plant_lower_capacity ={}
-    plant_ramp_up_deltas = {}
-    plant_ramp_down_deltas = {}
-    plant_fixed_costs = {}
+def get_plant_start_type(plant_units):
     for plant in plant_units:
-        if(plant.average_variable_cost>0):
-            plant_names.append(plant.name)
-            plant_production_costs[plant.name] = plant.average_variable_cost
-            plant_thermal_effeciencies[plant.name] = plant.plant_thermal_effeciency
-            plant_upper_capacity[plant.name] = plant.upper_capacity
-            plant_lower_capacity[plant.name] = plant.lower_capacity
-            plant_ramp_up_deltas[plant.name] = plant.ramp_up_delta
-            plant_ramp_down_deltas[plant.name] = plant.ramp_down_delta
-            plant_fixed_costs[plant.name] = fixed_costs[(plant.fixed_cost_capacity_bucket,plant.start_type)]
-
-    scheduling_time_blocks = list(range(1,97))
-    scheduling_dates =  sorted(demand_UP['date'].unique())
-    
-
-    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas
-
+        if plant.status == 1:
+            start_type = None
+        else:
+            if plant.hours_switched_off < 10:
+                start_type = 'hot_start'
+            elif (plant.hours_switched_off >10 & plant.hours_switched_off <72):
+                start_type = 'warm_start'
+            else:
+                start_type = 'cold_start'
+    return start_type
 
 def get_fixed_costs(fixed_costs_file):
-    return pd.read_csv(fixed_costs_file).set_index(['plant_capacity','start_type']).T.to_dict()
+    fixed_costs = pd.read_csv(fixed_costs_file).set_index(['plant_capacity','start_type']).T.to_dict()
+    return fixed_costs
 
-def get_start_type(selected_power_plant_units):
+def get_plant_status(development_data,plant_units):
+    dev_dates = sorted(development_data['date'].unique(),reverse=True)
 
 
-    for power_plant in selected_power_plant_units:
-        reading_optimization_data
+    development_data['plf'] = development_data['avg_unit_current_load']/development_data['upsldc_unit_capacity']
+    status_data = development_data.groupby(['plant_name','actual_plant_unit','date','time_block_of_day']).agg({'plf':'sum'}).reset_index()
+    status_data['plant_unit_name'] = status_data['plant_name']+" unit:"+status_data['actual_plant_unit'].astype(str)
+    status_data = status_data.set_index(['plant_unit_name','date','time_block_of_day']).drop(['plant_name','actual_plant_unit'],axis=1).to_dict()
+    status_data = status_data.set_index(['plant_unit_name','date','time_block_of_day']).drop(['plant_name','actual_plant_unit'],axis=1).to_dict()
+
+    #finding the last 3 days from the development data 
+    last_date = dev_dates[0]
+    last_three_dates = dev_dates[:3] 
+
+    #if the plant was over 10% at the last hour of the last day it is deemed on else off 
+    checked_plants = {}
+    for plant in plant_units:
+        for date in last_three_dates:
+            if date == last_date:
+                key_to_look = (plant.name,last_date,96) 
+                if key_to_look in status_data['plf']:
+                    if status_data['plf'][key_to_look]>=0.10:
+                        plant.status_of_plant = 1
+                        plant.hours_switched_off = 0
+                        checked_plants[plant] = 1 
+                    else:
+                        plant.status_of_plant = 0
+                        plant.hours_switched_off=1
+
+        #identifying the number of hours switched off if off         
+        for date in last_three_dates:
+            time_block_counter = 96
+            while(time_block_counter!=0):
+                for plant in plant_units:
+                    if plant.status_of_plant == 0:
+                        key_to_look = (plant.name,date,time_block_counter) 
+                        if key_to_look in status_data['plf']:
+                            if status_data['plf'][key_to_look]<=0.1:
+                                if date == last_date:
+                                    plant.hours_switched_off = abs((time_block_counter//4)-24)
+                                elif date == last_date-timedelta(1):
+                                    plant.hours_switched_off = abs((time_block_counter//4)-48)
+                                else:
+                                    plant.hours_switched_off = abs((time_block_counter//4)-72)
+                time_block_counter -= 1
+
+        for plant in plant_units:
+            if plant.status_of_plant==0:
+                if plant.hours_switched_off is None:
+                    plant.hours_switched_off = 72
 
         
-    
-
     return None 
+
+
+
+
+        
 
 
 
