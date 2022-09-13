@@ -1,19 +1,23 @@
 from datetime import datetime,timedelta
+from typing import OrderedDict
 from plant_model import PlantUnits
 import pandas as pd
 from demand_model import Demand
 import numpy as np
 import csv
 import re
+import glob
+import os
 
-raw_data = pd.read_csv("RawData/upsldc_plant_unit_time_block.csv")
-raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.date
+
+# raw_data = pd.read_csv("RawData/upsldc_plant_unit_time_block.csv")
+# raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.date
 
 #this function is to get the inputs needed for running the model. 
 #accepted values are 'cost' and 'effeciency'
-OBJECTIVE_FUCTION = 'cost'
-COAL_RAMP_UP_PERCENT = 0.13
-COAL_RAMP_DOWN_PERCENT = 0.13
+OBJECTIVE_FUNCTION = 'cost'
+COAL_RAMP_UP_PERCENT = 0.15
+COAL_RAMP_DOWN_PERCENT = 0.15
 COAL_EFFICIENCY_RATE = 1
 BASE_OR_PEAK_COST_CUT_OFF = 3
 MINIMUM_BASE_PLANT_CAPACITY = 0.70
@@ -23,13 +27,14 @@ MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 
 # start and end date of developmental window
-DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 6, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 10, 1)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 5, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 6, 1)
 
 #start and end of testing window 
-MODEL_PERIOD_START_TIME = datetime(2021, 10, 1)
-MODEL_PERIOD_END_TIME = datetime(2021, 11, 1)
-INFINITE_CAPACITY = 10000
+MODEL_PERIOD_START_TIME = datetime(2022, 6, 1)
+MODEL_PERIOD_END_TIME = datetime(2022, 7, 1)
+MONTH = "jun_2022"
+INFINITE_CAPACITY = 14000
 MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base' and 'low'
 DEMAND_PROFILE = 'base'
@@ -41,29 +46,35 @@ PLANT_UNIT_LEVEL = ['plant_name','actual_plant_unit']
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
 
-#------------------CHANGE THIS INPUT-------------------------
-#-----------------name of the month--------------------------
-MONTH = "oct_2021"
+
 
 #------------------input file locations------------------------
-INPUT_RAW_FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
+INPUT_FILE_LOCATION = "RawData/upsldc_data"
 INPUT_MAPPING_TIMEBLOCKS_TO_HOURS = "RawData/hours_timeblock_mapping.csv"
 INPUT_THERMAL_EFFECIENCY_FILE_NAME = "RawData/thermal_effeciencies.csv"
 INPUT_FIXED_COSTS_DATA = "RawData/fixed_costs.csv"
+
 
 #-------------------output_file_locations-----------------------
 OUTPUT_SOLUTION_FOLDER = "output_files"
 OUTPUT_ACTUALS_FOLDER = "output_files"
 
-
+#this function will combine the input files in the folder to create a single upsldc file 
+def combine_inputs_into_a_single_file(input_location):
+    input_files = os.path.join(input_location,"upsldc_plant_unit_time_block*.csv")
+    input_files = glob.glob(input_files)
+    input_upsldc_final_csv = pd.concat(map(pd.read_csv,input_files),ignore_index=True)
+    input_upsldc_final_csv.drop_duplicates(inplace=True)
+    input_upsldc_final_csv.to_csv('checking.csv')
+    return input_upsldc_final_csv
 
 
 #this function will read the UPSLDC input file from the location (this is the data for the whole time period.)
-def reading_input_data(file_name):
-    raw_data = pd.read_csv(file_name)
-    raw_data['data_capture_time_block_start'] = pd.to_datetime(raw_data['data_capture_time_block_start'])
-    raw_data['date'] = pd.to_datetime(raw_data['data_capture_time_block_start']).dt.date
-    return raw_data
+def converting_to_datetime(input_files):
+    # raw_data = pd.read_csv(file_name)
+    input_files['data_capture_time_block_start'] = pd.to_datetime(input_files['data_capture_time_block_start'])
+    input_files['date'] = pd.to_datetime(input_files['data_capture_time_block_start']).dt.date
+    return input_files
 
 
 #this function is used to get data in the respective time blocks. The demand calculations 
@@ -88,6 +99,8 @@ def get_plant_characteristics(plant_unit_timeblocks):
         if plant_name != "OTHER RENEWABLE":
             plant_unit_num = int(splitter[1])
             plant_data = plant_unit_timeblocks[(plant_unit_timeblocks['plant_name'] == plant_name) & (plant_unit_timeblocks['actual_plant_unit'] == plant_unit_num)]
+
+            
             plant_ramp_up_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
             plant_ramp_down_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
             plant_data_row = plant_data.iloc[0]
@@ -117,6 +130,24 @@ def get_plant_characteristics(plant_unit_timeblocks):
            
             
     return plant_units
+
+def get_actuals_for_reporting(plant_unit_timeblocks):
+    actuals_data = pd.DataFrame()
+    
+    actuals_data = plant_unit_timeblocks[['plant_name','actual_plant_unit','date','time_block_of_day','avg_unit_current_load']]
+    actuals_data['plant_unit_name'] = plant_unit_timeblocks['plant_name'] + " unit:" + plant_unit_timeblocks['actual_plant_unit'].astype(str)
+    actuals_data = actuals_data.drop(['plant_name','actual_plant_unit'],axis=1)
+    actuals_data.to_csv('actuals.csv')
+
+    actuals_data = actuals_data.set_index(['plant_unit_name','date','time_block_of_day']).T.to_dict()
+    actuals_data = {key: value['avg_unit_current_load'] for (key, value) in actuals_data.items()}
+    with open('actuals_dict.csv', 'w') as f:
+        for key in actuals_data.keys():
+            f.write("%s,%s\n"%(key,actuals_data[key]))
+    return actuals_data
+    
+
+
 
 def get_only_thermal_power_plant(plant_units):
     thermal_plant_units = []
@@ -169,9 +200,7 @@ def get_thermal_effeciency(thermal_effeciencies_in_a_csv,thermal_plants):
     return None
 
 
-
 #This function is used to clean up the demand and get the demand units. Removing the demand satisfied by other renewables 
-
 def get_demand_data(model_demand):
     demand= model_demand[~model_demand.plant_fuel_type.isin(["RENEWABLE"])]
     demand_without_other_ren = demand.groupby(TIME_LEVEL).sum().reset_index()
@@ -214,24 +243,30 @@ def get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,deman
     return demand_of_UP_bydate_byhour_units,demand_UP
 
 def get_peak_demand(demand_UP):
-    peak_demand_by_date = demand_UP.groupby('date').agg({'avg_unit_current_load',max}).reset_index().set_index('date').T.to_dict(list)
+    peak_demand_by_date = demand_UP.groupby(['date']).agg({'avg_unit_current_load':'max'}).reset_index().set_index('date').T.to_dict(orient='records')
     return peak_demand_by_date
 
-def get_plant_start_type(plant_units):
+def get_max_capacity(plant_units):
+    total_capacity = 0
     for plant in plant_units:
-        if plant.status == 1:
-            start_type = None
+        total_capacity += plant.upper_capacity
+    return total_capacity
+
+def get_plant_start_type(plant_unit):
+
+    if plant_unit.status_of_plant == 1:
+        start_type = None
+    else:
+        if plant_unit.hours_switched_off < 10:
+            start_type = 'hot_start'
+        elif (plant_unit.hours_switched_off >10 and plant_unit.hours_switched_off <72):
+            start_type = 'warm_start'
         else:
-            if plant.hours_switched_off < 10:
-                start_type = 'hot_start'
-            elif (plant.hours_switched_off >10 & plant.hours_switched_off <72):
-                start_type = 'warm_start'
-            else:
-                start_type = 'cold_start'
+            start_type = 'cold_start'
     return start_type
 
-def get_fixed_costs(fixed_costs_file):
-    fixed_costs = pd.read_csv(fixed_costs_file).set_index(['plant_capacity','start_type']).T.to_dict()
+def get_fixed_costs(FIXED_COSTS_FILE):
+    fixed_costs = pd.read_csv(FIXED_COSTS_FILE).set_index(['plant_capacity','start_type']).T.to_dict()
     return fixed_costs
 
 def get_plant_status(development_data,plant_units):
@@ -242,7 +277,7 @@ def get_plant_status(development_data,plant_units):
     status_data = development_data.groupby(['plant_name','actual_plant_unit','date','time_block_of_day']).agg({'plf':'sum'}).reset_index()
     status_data['plant_unit_name'] = status_data['plant_name']+" unit:"+status_data['actual_plant_unit'].astype(str)
     status_data = status_data.set_index(['plant_unit_name','date','time_block_of_day']).drop(['plant_name','actual_plant_unit'],axis=1).to_dict()
-    status_data = status_data.set_index(['plant_unit_name','date','time_block_of_day']).drop(['plant_name','actual_plant_unit'],axis=1).to_dict()
+    
 
     #finding the last 3 days from the development data 
     last_date = dev_dates[0]
@@ -287,6 +322,24 @@ def get_plant_status(development_data,plant_units):
 
         
     return None 
+
+def get_plant_fixed_cost_capacity_bucket(plant_units):
+    for plant in plant_units:
+        if plant.capacity<200:
+            plant.fixed_cost_capacity_bucket = 200
+        else:
+            plant.fixed_cost_capacity_bucket = 500
+    return None
+
+def get_plant_units_from_plant_names(plant_names,plant_units):
+    needed_plant_units = []
+    for plant in plant_units:
+        if plant.name in plant_names:
+            needed_plant_units.append(plant)
+    return needed_plant_units
+
+
+
 
 
 

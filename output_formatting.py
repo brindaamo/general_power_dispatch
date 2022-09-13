@@ -1,10 +1,10 @@
 import json
 
 import pandas as pd
-from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
+# from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
 from datetime import date, datetime
 import re
-from utils import INPUT_RAW_FILE_NAME,OBJECTIVE,DEMAND_PROFILE
+from utils import OBJECTIVE,DEMAND_PROFILE
 from datetime import timedelta
 
 def output_formatting(optimization_solution):
@@ -40,9 +40,9 @@ def output_formatting_primary_opti_solution(inputData):
     for arrayLength in range(len(splitData)):
         if(splitData[arrayLength].find("productionUnits")!=-1):
             outputDataSplitArray = splitData[arrayLength].rsplit(",_")[1].rsplit("=")
+            outputDataSplitArray[0]=outputDataSplitArray[0].replace("_"," ")
             output_dictionary[outputDataSplitArray[0]] = outputDataSplitArray[1]
     #output should be {'plant_unit_name':'plant_unit_production_units'}        
-    print(output_dictionary)
     return output_dictionary
 
 
@@ -74,7 +74,7 @@ def demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP
 
 
 
-def output_plant_chars(optimization_solution_json,plant_units):
+def output_plant_chars(optimization_solution_json,plant_units,demand_blocks,actuals_data):
     optimization_solution_obj = json.loads(optimization_solution_json,object_hook=date_hook)
     for obj in optimization_solution_obj:
         for plant in plant_units:
@@ -91,7 +91,27 @@ def output_plant_chars(optimization_solution_json,plant_units):
                 obj['model_base_or_peak_plant'] = plant.base_or_peak_plant
                 obj['demand_profile'] = DEMAND_PROFILE
                 obj['model_objective'] = OBJECTIVE
-                obj['model_run_date'] = str(datetime.now().date())
+                obj['model_run_date'] = str(datetime.now().date())  
+
+    for obj in optimization_solution_obj:
+        plant_name = obj['model_plant_name'].replace("_"," ")
+        if (plant_name,obj['date'],int(obj['time_bucket'])) in actuals_data.keys():
+            obj['actuals'] = actuals_data[(plant_name,obj['date'],int(obj['time_bucket']))]
+        else:
+            obj['actuals'] = 0
+                
+                
+
+
+        for demand in demand_blocks:
+            if(obj['date'] == demand.date):
+                if(int(obj['time_bucket']) == demand.time_block):
+                    obj['demand'] = demand.demand_val
+        
+
+    
+        
+
     with open("optimization_solution_json.json","w") as output_file:
         output_file.write(json.dumps(optimization_solution_obj, default = my_date_converter))
     return json.dumps(optimization_solution_obj,  default = my_date_converter)
@@ -127,9 +147,9 @@ def add_plant_ramp_up_and_down(output_plant_chars_add,scheduling_time_blocks, sc
                   ramp_rates[name_date_time_block] = (plant_name_date_time_bucket[name_date_time_block_plus_one]['model_production'] - plant_name_date_time_bucket[name_date_time_block]['model_production'])/plant_name_date_time_bucket[name_date_time_block]['model_production']
     return ramp_rates
     
-def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates,plant_names):
+def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates,plant_names,demand_values_filled,actuals_data):
     opti_solution_json = output_formatting(optimization_solution='optimization_solution_with_new_constraints.txt')
-    output_plant_chars_add = output_plant_chars(opti_solution_json,plant_units)
+    output_plant_chars_add = output_plant_chars(opti_solution_json,plant_units,demand_values_filled,actuals_data)
     output_plant_chars_added = pd.read_json(output_plant_chars_add)
     ramp_rates = add_plant_ramp_up_and_down(output_plant_chars_add,scheduling_time_blocks, scheduling_dates, plant_names)
 

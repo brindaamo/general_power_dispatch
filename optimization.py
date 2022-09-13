@@ -24,13 +24,17 @@ def reading_optimization_data(plant_units,demand_UP,fixed_costs):
             plant_lower_capacity[plant.name] = plant.lower_capacity
             plant_ramp_up_deltas[plant.name] = plant.ramp_up_delta
             plant_ramp_down_deltas[plant.name] = plant.ramp_down_delta
-            plant_fixed_costs[plant.name] = fixed_costs[(plant.fixed_cost_capacity_bucket,plant.start_type)]
+            #only if plant is switched off there is fixed costs incurred 
+            if plant.status_of_plant==0:
+                plant_fixed_costs[plant.name] = fixed_costs[(plant.fixed_cost_capacity_bucket,plant.start_type)]['total_costs']
+            else:
+                plant_fixed_costs[plant.name] = 0
 
     scheduling_time_blocks = list(range(1,97))
     scheduling_dates =  sorted(demand_UP['date'].unique())
     
 
-    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas
+    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas,plant_fixed_costs
 
 def creating_optimization_instance_primary_problem(plant_units,plant_names,plant_production_costs,peak_demand,plant_fixed_costs):
     
@@ -38,15 +42,18 @@ def creating_optimization_instance_primary_problem(plant_units,plant_names,plant
     primary_opti_prob = LpProblem("production_cost_minimization", LpMinimize)
 
     #creating the vatiables 
-    production_vars = LpVariable.dicts(name = "productionUnits",indices = [i for i in plant_names],lowBound=0)
-    plant_off_or_on = LpVariable.dict(name="powerOnOff",indices = [i for i in plant_names],cat='Binary')
+    production_vars = LpVariable.dicts(name = "productionUnits,",indices = [i for i in plant_names],lowBound=0)
+    plant_off_or_on = LpVariable.dict(name="powerOnOff,",indices = [i for i in plant_names],cat='Binary')
 
     #demand_satisfaction_constraints
+    total_capacity = 0
     for plant in plant_units:
         total_capacity += plant.upper_capacity
     demand_considered = min(peak_demand,total_capacity)
     
-    primary_opti_prob+= (lpSum(production_vars[plant] for plant in plant_names) >= 1)
+    primary_opti_prob+= (lpSum(production_vars[plant] for plant in plant_names) >= 1
+    
+    )
     
     
     #capacity constraints 
