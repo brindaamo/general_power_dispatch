@@ -18,6 +18,8 @@ import os
 OBJECTIVE_FUNCTION = 'cost'
 COAL_RAMP_UP_PERCENT = 0.15
 COAL_RAMP_DOWN_PERCENT = 0.15
+HYDRO_RAMP_UP_PERCENT = 0.4
+HYDRO_RAMP_DOWN_PERCENT = 0.4
 COAL_EFFICIENCY_RATE = 1
 BASE_OR_PEAK_COST_CUT_OFF = 3
 MINIMUM_BASE_PLANT_CAPACITY = 0.70
@@ -27,13 +29,13 @@ MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 
 # start and end date of developmental window
-DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 5, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 6, 1)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2021,4 , 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 5, 31)
 
-#start and end of testing window 
-MODEL_PERIOD_START_TIME = datetime(2022, 6, 1)
-MODEL_PERIOD_END_TIME = datetime(2022, 7, 1)
-MONTH = "jun_2022"
+#start and end of testing window
+MODEL_PERIOD_START_TIME = datetime(2022,5 , 31)
+MODEL_PERIOD_END_TIME = datetime(2022, 6, 1)
+MONTH = "may_31st_2022"
 INFINITE_CAPACITY = 14000
 MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base' and 'low'
@@ -65,7 +67,6 @@ def combine_inputs_into_a_single_file(input_location):
     input_files = glob.glob(input_files)
     input_upsldc_final_csv = pd.concat(map(pd.read_csv,input_files),ignore_index=True)
     input_upsldc_final_csv.drop_duplicates(inplace=True)
-    input_upsldc_final_csv.to_csv('checking.csv')
     return input_upsldc_final_csv
 
 
@@ -88,9 +89,19 @@ def get_raw_data_by_time(raw_data,start_time, end_time):
         & (raw_data["data_capture_time_block_start"] < end_time_str)
     ]
 
+def creating_plant_unit_names(plant_unit_timeblocks):
+    plant_unit_timeblocks['unique_names'] = plant_unit_timeblocks['plant_name']+"unit:"+plant_unit_timeblocks['actual_plant_unit'].astype(str)
+    return plant_unit_timeblocks
+
+def get_up_drawal_plant_capacity(plant_unit_timeblocks,plant_name):
+    plant_data = plant_unit_timeblocks[plant_unit_timeblocks['plant_name'] == plant_name]
+    plant_data['avg_unit_current_load'] = plant_data['avg_unit_current_load']*1.1
+    plant_data = plant_data.groupby('time_block_of_day').max('avg_unit_current_load').reset_index()[['time_block_of_day','avg_unit_current_load']].set_index('time_block_of_day').to_dict('dict')['avg_unit_current_load']
+    return plant_data
+    
 
 #this function is used to get the plant characteristics
-def get_plant_characteristics(plant_unit_timeblocks):
+def get_plant_characteristics(plant_unit_timeblocks,up_drawal):
     plant_units = []
     unique_names = (plant_unit_timeblocks['plant_name'] + " unit:" + plant_unit_timeblocks['actual_plant_unit'].astype(str)).unique()
     for name in unique_names:
@@ -99,22 +110,28 @@ def get_plant_characteristics(plant_unit_timeblocks):
         if plant_name != "OTHER RENEWABLE":
             plant_unit_num = int(splitter[1])
             plant_data = plant_unit_timeblocks[(plant_unit_timeblocks['plant_name'] == plant_name) & (plant_unit_timeblocks['actual_plant_unit'] == plant_unit_num)]
-
-            
-            plant_ramp_up_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
-            plant_ramp_down_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
             plant_data_row = plant_data.iloc[0]
             average_cost = plant_data['variable_cost'].mean()
 
+            #identifying the thermal and hydro ramp rates independantly 
+            if plant_data_row["plant_fuel_type"] == 'THERMAL':
+                plant_ramp_up_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
+                plant_ramp_down_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
+            else:
+                plant_ramp_up_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*HYDRO_RAMP_UP_PERCENT
+                plant_ramp_down_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*HYDRO_RAMP_DOWN_PERCENT
+            
             #getting the lower capacities 
             lower_capacity = plant_data.groupby('date').agg({'avg_unit_current_load':'min'}).reset_index()['avg_unit_current_load'].median()
 
+            #setting UP Drawal's values 
             if plant_name == 'UP DRAWAL':
-                upper_capacity = INFINITE_CAPACITY
+                upper_capacity = max(up_drawal.values())
                 lower_capacity = MINIMUM_UP_DRAWAL
                 base_or_peak = 'peak'
-                plant_ramp_up_delta = upper_capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT
-                plant_ramp_down_delta = upper_capacity*COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT
+                plant_ramp_up_delta = {key: value * COAL_EFFICIENCY_RATE*COAL_RAMP_UP_PERCENT for key, value in up_drawal.items()}
+                plant_ramp_down_delta = {key: value * COAL_EFFICIENCY_RATE*COAL_RAMP_DOWN_PERCENT for key, value in up_drawal.items()}
+                plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak,up_drawal=up_drawal,up_drawal_ramp_up_delta=plant_ramp_up_delta,up_drawal_ramp_down_delta = plant_ramp_down_delta))
 
             else:
                 if average_cost<3:
@@ -123,13 +140,37 @@ def get_plant_characteristics(plant_unit_timeblocks):
                 else:
                     upper_capacity = MAXIMUM_PEAK_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
                     base_or_peak = 'peak'
-
-
             
-            plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak))
+
+
+            if plant_name != 'UP DRAWAL':
+                plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak,up_drawal=up_drawal))
            
             
     return plant_units
+
+def get_hydro_maximum_for_constraint(plant_unit_timeblocks,plant_units):
+    from statsmodels.tsa.api import SimpleExpSmoothing
+    hydro_plant_data = plant_unit_timeblocks[plant_unit_timeblocks['plant_fuel_type']=='HYDRO']
+    unique_names = (hydro_plant_data['plant_name'] + " unit:" + hydro_plant_data['actual_plant_unit'].astype(str)).unique()
+    hydro_limit_dict = {}
+    for name in unique_names:
+        splitter = name.split(" unit:")
+        plant_name = splitter[0]
+        plant_unit_num = int(splitter[1])
+        plant_data = hydro_plant_data[(hydro_plant_data['plant_name'] == plant_name) & (hydro_plant_data['actual_plant_unit'] == plant_unit_num)]
+        plant_wise_hydro = plant_data.groupby('date').agg({'avg_unit_current_load':'sum'}).reset_index()['avg_unit_current_load']*0.25
+        fit3 = SimpleExpSmoothing(plant_wise_hydro, initialization_method="estimated").fit()
+        modeling_day_hydro_limit = float(fit3.forecast(1))
+        hydro_limit_dict[name] = modeling_day_hydro_limit
+    
+    for plant in plant_units:
+        if plant.fuel_type == "HYDRO":
+            plant.hydro_limit = hydro_limit_dict[plant.name]
+
+    return hydro_limit_dict
+
+
 
 def get_actuals_for_reporting(plant_unit_timeblocks):
     actuals_data = pd.DataFrame()
@@ -146,7 +187,6 @@ def get_actuals_for_reporting(plant_unit_timeblocks):
             f.write("%s,%s\n"%(key,actuals_data[key]))
     return actuals_data
     
-
 
 
 def get_only_thermal_power_plant(plant_units):

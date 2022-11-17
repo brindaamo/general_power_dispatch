@@ -4,7 +4,7 @@ import pandas as pd
 # from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
 from datetime import date, datetime
 import re
-from utils import OBJECTIVE,DEMAND_PROFILE
+from utils import OBJECTIVE,DEMAND_PROFILE,creating_plant_unit_names
 from datetime import timedelta
 
 def output_formatting(optimization_solution):
@@ -92,13 +92,18 @@ def output_plant_chars(optimization_solution_json,plant_units,demand_blocks,actu
                 obj['demand_profile'] = DEMAND_PROFILE
                 obj['model_objective'] = OBJECTIVE
                 obj['model_run_date'] = str(datetime.now().date())  
-
+    actuals = ""
     for obj in optimization_solution_obj:
-        plant_name = obj['model_plant_name'].replace("_"," ")
+        
+        plant_name = obj['model_plant_name'].replace("_"," ").replace("-"," ")
         if (plant_name,obj['date'],int(obj['time_bucket'])) in actuals_data.keys():
+            actuals += plant_name + str(obj['date'])+"," + str(obj['time_bucket'])+"," + str(actuals_data[(plant_name,obj['date'],int(obj['time_bucket']))]) + "\n"
             obj['actuals'] = actuals_data[(plant_name,obj['date'],int(obj['time_bucket']))]
         else:
+            actuals += plant_name + str(obj['date'])+"," + str(obj['time_bucket'])+"," + str(0) + "\n"
             obj['actuals'] = 0
+        # with open("actuals_checking.txt", "w") as text_file:
+        #     text_file.write(actuals)
                 
                 
 

@@ -29,12 +29,17 @@ def reading_optimization_data(plant_units,demand_UP,fixed_costs):
                 plant_fixed_costs[plant.name] = fixed_costs[(plant.fixed_cost_capacity_bucket,plant.start_type)]['total_costs']
             else:
                 plant_fixed_costs[plant.name] = 0
+            if plant.name == 'UP DRAWAL unit:0':
+                up_drawal_capacity = plant.up_drawal
+                up_drawal_ramp_up = plant.up_drawal_ramp_up_delta
+                up_drawal_ramp_down = plant.up_drawal_ramp_down_delta
+
 
     scheduling_time_blocks = list(range(1,97))
     scheduling_dates =  sorted(demand_UP['date'].unique())
     
 
-    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas,plant_fixed_costs
+    return scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas,plant_fixed_costs,up_drawal_capacity,up_drawal_ramp_up,up_drawal_ramp_down
 
 def creating_optimization_instance_primary_problem(plant_units,plant_names,plant_production_costs,peak_demand,plant_fixed_costs):
     
@@ -94,7 +99,7 @@ def solving_optimization_instance(primary_opti_prob):
     return solution_status,output
     
 
-def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas):
+def creating_optimization_instance(demand_values,scheduling_time_blocks, scheduling_dates,plant_units, plant_names, plant_production_costs,plant_thermal_effeciencies, plant_upper_capacity,plant_lower_capacity,plant_ramp_up_deltas,plant_ramp_down_deltas,up_drawal_capacity,up_drawal_ramp_up,up_drawal_ramp_down,hydro_limits_dict):
     
     #creating the LP problem instance
     if OBJECTIVE == 'cost':
@@ -129,7 +134,11 @@ def creating_optimization_instance(demand_values,scheduling_time_blocks, schedul
     for plant in plant_names:
         for date in scheduling_dates:
             for time_block in scheduling_time_blocks:
-                prob += production_vars[(plant,date,time_block)] <= plant_upper_capacity[plant]
+                if plant != 'UP DRAWAL unit:0':
+                    prob += production_vars[(plant,date,time_block)] <= plant_upper_capacity[plant]
+                else:
+                    prob += production_vars[(plant,date,time_block)] <= up_drawal_capacity[time_block]
+                                      
     
     for plant in plant_names:
         for date in scheduling_dates:
@@ -138,33 +147,53 @@ def creating_optimization_instance(demand_values,scheduling_time_blocks, schedul
 
     #ramp up constraints 
     for plant in plant_names:
-        # if plant != 'UP DRAWAL unit:0':
-        for date in scheduling_dates:
-            for time_block in scheduling_time_blocks[:-1]:
-                prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= plant_ramp_up_deltas[plant]
+            for date in scheduling_dates:
+                for time_block in scheduling_time_blocks[:-1]:
+                    if plant != 'UP DRAWAL unit:0':
+                        prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= plant_ramp_up_deltas[plant]
+                    else:
+                        prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= up_drawal_ramp_up[time_block]
 
     #ramp up constraints for the last time block connecting to the next day
     for plant in plant_names:
         # if plant != 'UP DRAWAL unit:0':
-        for today in scheduling_dates[:-1]:
-            tomorrow = today+timedelta(1)
-            prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= plant_ramp_up_deltas[plant]
+            for today in scheduling_dates[:-1]:
+                tomorrow = today+timedelta(1)
+                if plant != 'UP DRAWAL unit:0':
+                    prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= plant_ramp_up_deltas[plant]
+                else:
+                    prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= up_drawal_ramp_up[time_block]
 
     #ramp down constraints 
     for plant in plant_names:
         # if plant != 'UP DRAWAL unit:0':
-        for date in scheduling_dates:
-            for time_block in scheduling_time_blocks[:-1]:
-                prob +=  production_vars[(plant,date,time_block)] - production_vars[(plant,date,time_block+1)]<= plant_ramp_down_deltas[plant]
+            for date in scheduling_dates:
+                for time_block in scheduling_time_blocks[:-1]:
+                    if plant != 'UP DRAWAL unit:0':
+                        prob +=  production_vars[(plant,date,time_block)] - production_vars[(plant,date,time_block+1)]<= plant_ramp_down_deltas[plant]
+                    else:
+                        prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= up_drawal_ramp_down[time_block]
+
 
     #ramp down constraints for the last time block connecting to the next day
     for plant in plant_names:
         # if plant != 'UP DRAWAL unit:0':
-        for today in scheduling_dates[:-1]:
-            tomorrow = today+timedelta(1)
-            prob += production_vars[(plant,today,96)] - production_vars[(plant,tomorrow,1)]<= plant_ramp_down_deltas[plant]
+            for today in scheduling_dates[:-1]:
+                tomorrow = today+timedelta(1)
+                if plant != 'UP DRAWAL unit:0':
+                    prob += production_vars[(plant,today,96)] - production_vars[(plant,tomorrow,1)]<= plant_ramp_down_deltas[plant]
+                else:
+                    prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= up_drawal_ramp_down[time_block]
+    
+    #day level hydro constraint
+    for plant in plant_units:
+        if plant.fuel_type == 'HYDRO':
+            for date in scheduling_dates:
+                prob += (lpSum(production_vars[(plant.name,date,time_block)] for time_block in scheduling_time_blocks) <= hydro_limits_dict[plant.name])
 
-        return prob
+
+
+    return prob
 
 def solving_optimization_instance(prob):
     prob.solve()
