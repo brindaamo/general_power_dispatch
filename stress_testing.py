@@ -29,11 +29,11 @@ for plant in plant_units:
 get_plant_fixed_cost_capacity_bucket(plant_units)      
 
 #getting demand data 
-demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
-demand_of_UP_bydate_byhour_units,demand_UP = get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,DEMAND_PROFILE)
+# demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
+# demand_of_UP_bydate_byhour_units,demand_UP = get_demand_based_on_profile(demand_of_UP_bydate_byhour_units,demand_UP,DEMAND_PROFILE)
 
 #use this when stress testing with the right file 
-# demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data_from_a_file(DEMAND_DATA_FILE_LOCATION)
+demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data_from_a_file(DEMAND_DATA_FILE_LOCATION)
 
 #run the data validations 
 print(capacity_checks_of_plants(plant_units))
@@ -82,7 +82,7 @@ opti_final_output_with_actuals.to_csv(opti_solution_location,index=False)
 print(time.time() - t0)
 
 
-# output of actuals in a csv for comparison with model 
+# # output of actuals in a csv for comparison with model 
 # actuals_location = OUTPUT_ACTUALS_FOLDER +"/"+ MONTH +"_actuals"+ ".csv"
 # model_data.to_csv(actuals_location)
 

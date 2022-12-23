@@ -83,8 +83,12 @@ def output_plant_chars(optimization_solution_json,plant_units,demand_blocks,actu
                 obj['capacity'] = plant.capacity
                 obj['plant_ownership'] = plant.ownership
                 obj['fuel_type'] = plant.fuel_type
-                obj['model_max_ramp_up_delta'] = plant.ramp_up_delta
-                obj['model_max_ramp_down_delta'] = plant.ramp_down_delta
+                if formatted_name != 'UP_DRAWAL_unit:0':
+                    obj['model_max_ramp_up_delta'] = plant.ramp_up_delta
+                    obj['model_max_ramp_down_delta'] = plant.ramp_down_delta
+                else:
+                    obj['model_max_ramp_up_delta'] = plant.up_drawal_ramp_up_delta
+                    obj['model_max_ramp_down_delta'] = plant.up_drawal_ramp_down_delta
                 obj['avg_variable_cost'] = plant.average_variable_cost 
                 obj['model_production_cost'] = plant.average_variable_cost*obj['model_production']
                 obj['model_PLF'] = (float(obj['model_production']) / float(plant.capacity)) 
@@ -93,12 +97,12 @@ def output_plant_chars(optimization_solution_json,plant_units,demand_blocks,actu
                 obj['model_objective'] = OBJECTIVE
                 obj['model_run_date'] = str(datetime.now().date())  
 
-    for obj in optimization_solution_obj:
-        plant_name = obj['model_plant_name'].replace("_"," ")
-        if (plant_name,obj['date'],int(obj['time_bucket'])) in actuals_data.keys():
-            obj['actuals'] = actuals_data[(plant_name,obj['date'],int(obj['time_bucket']))]
-        else:
-            obj['actuals'] = 0
+    # for obj in optimization_solution_obj:
+    #     plant_name = obj['model_plant_name'].replace("_"," ")
+    #     if (plant_name,obj['date'],int(obj['time_bucket'])) in actuals_data.keys():
+    #         obj['actuals'] = actuals_data[(plant_name,obj['date'],int(obj['time_bucket']))]
+    #     else:
+    #         obj['actuals'] = 0
                 
                 
 
@@ -147,10 +151,11 @@ def add_plant_ramp_up_and_down(output_plant_chars_add,scheduling_time_blocks, sc
                   ramp_rates[name_date_time_block] = (plant_name_date_time_bucket[name_date_time_block_plus_one]['model_production'] - plant_name_date_time_bucket[name_date_time_block]['model_production'])/plant_name_date_time_bucket[name_date_time_block]['model_production']
     return ramp_rates
     
-def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates,plant_names,demand_values_filled,actuals_data):
+def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates,plant_names,demand_values_filled,actuals_data,actuals_df):
     opti_solution_json = output_formatting(optimization_solution='optimization_solution_with_new_constraints.txt')
     output_plant_chars_add = output_plant_chars(opti_solution_json,plant_units,demand_values_filled,actuals_data)
     output_plant_chars_added = pd.read_json(output_plant_chars_add)
+    
     ramp_rates = add_plant_ramp_up_and_down(output_plant_chars_add,scheduling_time_blocks, scheduling_dates, plant_names)
 
     ramp_rates_in_a_df = pd.DataFrame(ramp_rates.items(),columns = ['plant_date_time','ramp_rate'])
@@ -161,7 +166,17 @@ def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates
     ramp_rates_in_a_df = ramp_rates_in_a_df.drop(columns='plant_date_time')
 
     opti_output = output_plant_chars_added.merge(ramp_rates_in_a_df,on=['model_plant_name','date','time_bucket'],how='left')
-    return opti_output
+
+    #adding actuals into the dataframe 
+    opti_output['date'] = pd.to_datetime(opti_output['date']).dt.date
+    actuals_df['capacity'] = actuals_df['upsldc_unit_capacity']
+    actuals_df['demand_profile'] = DEMAND_PROFILE
+    actuals_df['model_objective'] = OBJECTIVE
+    actuals_df['model_run_date'] = str(datetime.now().date())  
+
+    opti_final_output_with_actuals = opti_output.merge(actuals_df,on=['model_plant_name','date','time_bucket','capacity','model_objective','demand_profile','model_run_date'],how='outer')
+
+    return opti_output,opti_final_output_with_actuals
 
 
 #This method is used to convert datetime to string while parsing to json in code

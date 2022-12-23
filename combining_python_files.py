@@ -13,10 +13,9 @@ def combine_inputs_into_a_single_file(input_location):
 
 final_csv = combine_inputs_into_a_single_file(input_location)
 final_csv = final_csv[['model_plant_name', 'date', 'time_bucket', 'model_production',
-       'capacity', 'plant_ownership', 'fuel_type', 'model_max_ramp_up_delta',
+       'capacity', 'plant_ownership', 'plant_fuel_type', 'model_max_ramp_up_delta',
        'model_max_ramp_down_delta', 'avg_variable_cost',
        'model_production_cost', 'model_PLF', 'model_base_or_peak_plant',
-       'demand_profile', 'model_objective', 'model_run_date','ramp_rate', 'actuals',
-       'demand']]
+       'demand_profile', 'model_objective', 'model_run_date','ramp_rate', 'actuals','demand']]
 print(final_csv.columns)
 final_csv.to_csv('output_files/output_to_db/final.csv',index=False)

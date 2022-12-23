@@ -1,5 +1,5 @@
 class PlantUnits:
-    def __init__(self, name, ownership, fuel_type, capacity,lower_capacity,upper_capacity,ramp_up_delta,ramp_down_delta, average_variable_cost,base_or_peak,actuals=None,thermal_effeciency=None,status_of_plant=None,hours_switched_off=None,start_type=None,fixed_cost_capacity_bucket=None):
+    def __init__(self, name, ownership, fuel_type, capacity,lower_capacity,upper_capacity,ramp_up_delta,ramp_down_delta, average_variable_cost,base_or_peak,actuals=None,thermal_effeciency=None,status_of_plant=None,hours_switched_off=None,start_type=None,fixed_cost_capacity_bucket=None,up_drawal = None,up_drawal_ramp_up_delta=None,up_drawal_ramp_down_delta=None,hydro_limit=None):
         self.name = name
         self.ownership = ownership
         self.fuel_type = fuel_type
@@ -16,6 +16,10 @@ class PlantUnits:
         self.hours_switched_off = hours_switched_off
         self.start_type = start_type
         self.fixed_cost_capacity_bucket = fixed_cost_capacity_bucket
+        self.up_drawal = up_drawal
+        self.up_drawal_ramp_up_delta = up_drawal_ramp_up_delta
+        self.up_drawal_ramp_down_delta = up_drawal_ramp_down_delta
+        self.hydro_limit = hydro_limit
         
     
     def __repr__(self):
