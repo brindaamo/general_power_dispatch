@@ -29,6 +29,11 @@ def reading_optimization_data(plant_units,demand_UP,fixed_costs):
                 plant_fixed_costs[plant.name] = fixed_costs[(plant.fixed_cost_capacity_bucket,plant.start_type)]['total_costs']
             else:
                 plant_fixed_costs[plant.name] = 0
+            if plant.name == 'UP DRAWAL unit:0':
+                up_drawal_capacity = plant.up_drawal
+                up_drawal_ramp_up = plant.up_drawal_ramp_up_delta
+                up_drawal_ramp_down = plant.up_drawal_ramp_down_delta
+
 
             if plant.name == 'UP DRAWAL unit:0':
                 up_drawal_ramp_up = plant.up_drawal_ramp_up_delta

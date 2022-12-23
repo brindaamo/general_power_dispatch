@@ -70,7 +70,6 @@ def combine_inputs_into_a_single_file(input_location):
     input_files = glob.glob(input_files)
     input_upsldc_final_csv = pd.concat(map(pd.read_csv,input_files),ignore_index=True)
     input_upsldc_final_csv.drop_duplicates(inplace=True)
-    input_upsldc_final_csv.to_csv('checking.csv')
     return input_upsldc_final_csv
 
 
@@ -246,7 +245,6 @@ def get_actuals_df_for_reporting(plant_unit_timeblocks):
     actuals_df.drop('plant_ownership',inplace=True,axis=1)
     return actuals_df
    
-
 
 def get_only_thermal_power_plant(plant_units):
     thermal_plant_units = []

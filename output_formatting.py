@@ -4,7 +4,7 @@ import pandas as pd
 # from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
 from datetime import date, datetime
 import re
-from utils import OBJECTIVE,DEMAND_PROFILE
+from utils import OBJECTIVE,DEMAND_PROFILE,creating_plant_unit_names
 from datetime import timedelta
 
 def output_formatting(optimization_solution):
