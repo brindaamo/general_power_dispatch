@@ -2,6 +2,7 @@ from statistics import mean
 import pandas as pd
 from demand_model import Demand
 from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, INPUT_MAPPING_TIMEBLOCKS_TO_HOURS
+from utils import get_peak_demand,get_max_capacity
 from datetime import date,timedelta
 
 
@@ -67,5 +68,35 @@ def missing_demand_at_timeblock_level_and_filling(demand_of_UP_bydate_byhour_uni
     
     return demand_of_UP_bydate_byhour_units,demand_values_filled
     
+#constraint violation checks 
+
+# demand constraint violation checks 
+# if the demand is more than the overall capacity at any time block raise a flag 
+def demand_capacity_mismatch(demand_of_UP_bydate_byhour_units,plant_units,up_drawal_capacity):
+    #get demand in a dictionary
+    #get total capacity in a dictionary 
+    #now compare them 
+    scheduling_timeblocks = list(range(1,97))
+    max_capacity = {}
+    demand = {}
+   
+    for time_block in scheduling_timeblocks:
+        temp_capacity = 0
+        for plant in plant_units:
+            if(plant.name != 'UP DRAWAL unit:0'):
+                temp_capacity += plant.upper_capacity 
+            else:
+                temp_capacity += up_drawal_capacity[time_block]    
+        max_capacity[time_block] = temp_capacity
+    
+    for demand_model_item in demand_of_UP_bydate_byhour_units:
+        demand[demand_model_item.time_block] = demand_model_item.demand_val 
+    
+    for time_block in scheduling_timeblocks:
+        if(max_capacity[time_block]<= demand[time_block]):
+            print('mismatch') 
+    return max_capacity,demand
+ 
+
 
     

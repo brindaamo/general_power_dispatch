@@ -196,12 +196,11 @@ def creating_optimization_instance(demand_values,scheduling_time_blocks, schedul
                 prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= up_drawal_ramp_down[time_block]
             # prob += production_vars[(plant,today,96)] - production_vars[(plant,tomorrow,1)]<= plant_ramp_down_deltas[plant]
 
-    #day level hydro constraint
+    # day level hydro constraint
     for plant in plant_units:
         if plant.fuel_type == 'HYDRO':
             for date in scheduling_dates:
                 prob += (lpSum(production_vars[(plant.name,date,time_block)] for time_block in scheduling_time_blocks) <= hydro_limits_dict[plant.name],f"hydro_constraint{date}{plant.name}")
-    prob.writeLP("unit_commitment.lp")
 
     return prob
 

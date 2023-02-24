@@ -20,7 +20,7 @@ COAL_RAMP_UP_PERCENT = 0.15
 COAL_RAMP_DOWN_PERCENT = 0.15
 HYDRO_RAMP_UP_PERCENT = 0.4
 HYDRO_RAMP_DOWN_PERCENT = 0.4
-COAL_EFFICIENCY_RATE = 1
+COAL_EFFICIENCY_RATE = 1.12
 BASE_OR_PEAK_COST_CUT_OFF = 3
 MINIMUM_BASE_PLANT_CAPACITY = 0.70
 MAXIMUM_BASE_PLANT_CAPACITY = 1
@@ -29,18 +29,18 @@ MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 
 # start and end date of developmental window
-DEVELOPMENT_PERIOD_START_TIME = datetime(2021, 11, 1)
-DEVELOPMENT_PERIOD_END_TIME = datetime(2021, 12,31)
+DEVELOPMENT_PERIOD_START_TIME = datetime(2022, 6, 1)
+DEVELOPMENT_PERIOD_END_TIME = datetime(2022, 7,14)
 
 #start and end of testing window 
-MODEL_PERIOD_START_TIME = datetime(2021, 12,31)
-MODEL_PERIOD_END_TIME = datetime(2022, 1,1)
-MONTH = "dec_31st_2021"
+MODEL_PERIOD_START_TIME = datetime(2022, 7,14)
+MODEL_PERIOD_END_TIME = datetime(2022, 7,15)
+MONTH = "jul_14th_2022"
 INFINITE_CAPACITY = 14000
 MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base', 'low' and 'stress_testing'
 #if 'stress_testing' run the stress_testing.py file
-DEMAND_PROFILE = 'stress_testing'
+DEMAND_PROFILE = 'base'
 HIGH_PROFILE_FACTOR = 1.2
 LOW_PROFILE_FACTOR = 0.75
 BASE_PROFILE_FACTOR = 1
@@ -95,7 +95,7 @@ def get_raw_data_by_time(raw_data,start_time, end_time):
 #this function is used to get the hourly up drawal capacity 
 def get_up_drawal_plant_capacity(plant_unit_timeblocks,plant_name):
     plant_data = plant_unit_timeblocks[plant_unit_timeblocks['plant_name'] == plant_name]
-    plant_data['avg_unit_current_load'] = plant_data['avg_unit_current_load']*1.1
+    plant_data.loc[:,'avg_unit_current_load'] *= 1.1
     plant_data = plant_data.groupby('time_block_of_day').max('avg_unit_current_load').reset_index()[['time_block_of_day','avg_unit_current_load']].set_index('time_block_of_day').to_dict('dict')['avg_unit_current_load']
     return plant_data
 
@@ -172,8 +172,9 @@ def get_plant_characteristics(plant_unit_timeblocks,up_drawal):
                 plant_ramp_down_delta = np.percentile(plant_data['upsldc_unit_capacity'],75)*HYDRO_RAMP_DOWN_PERCENT
             
             #getting the lower capacities 
-            lower_capacity = plant_data.groupby('date').agg({'avg_unit_current_load':'min'}).reset_index()['avg_unit_current_load'].median()
+            lower_capacity = plant_data.groupby('date').agg({'avg_unit_current_load':'min'}).reset_index()['avg_unit_current_load'].min()
 
+            
             #setting UP Drawal's values 
             if plant_name == 'UP DRAWAL':
                 upper_capacity = max(up_drawal.values())
@@ -193,7 +194,8 @@ def get_plant_characteristics(plant_unit_timeblocks,up_drawal):
                     upper_capacity = MAXIMUM_PEAK_PLANT_CAPACITY*plant_data_row['upsldc_unit_capacity']
                     base_or_peak = 'peak'
             
-
+            if upper_capacity < lower_capacity:
+                lower_capacity = upper_capacity
 
             if plant_name != 'UP DRAWAL':
                 plant_units.append(PlantUnits(name, plant_data_row["plant_ownership"], plant_data_row["plant_fuel_type"], plant_data_row['upsldc_unit_capacity'],lower_capacity,upper_capacity,plant_ramp_up_delta, plant_ramp_down_delta, average_cost,base_or_peak,up_drawal=up_drawal))
@@ -228,13 +230,12 @@ def get_actuals_for_reporting(plant_unit_timeblocks):
     actuals_df = plant_unit_timeblocks[['plant_name','actual_plant_unit','date','time_block_of_day','avg_unit_current_load']]
     actuals_df['plant_unit_name'] = plant_unit_timeblocks['plant_name'] + " unit:" + plant_unit_timeblocks['actual_plant_unit'].astype(str)
     actuals_df = actuals_df.drop(['plant_name','actual_plant_unit'],axis=1)
-    actuals_df.to_csv('actuals.csv')
 
     actuals_data = actuals_df.set_index(['plant_unit_name','date','time_block_of_day']).T.to_dict()
     actuals_data = {key: value['avg_unit_current_load'] for (key, value) in actuals_data.items()}
-    with open('actuals_dict.csv', 'w') as f:
-        for key in actuals_data.keys():
-            f.write("%s,%s\n"%(key,actuals_data[key]))
+    # with open('actuals_dict.csv', 'w') as f:
+    #     for key in actuals_data.keys():
+    #         f.write("%s,%s\n"%(key,actuals_data[key]))
     return actuals_data
     
 def get_actuals_df_for_reporting(plant_unit_timeblocks):
@@ -302,7 +303,6 @@ def get_demand_data(model_demand):
     demand= model_demand[~model_demand.plant_fuel_type.isin(["RENEWABLE"])]
     demand_without_other_ren = demand.groupby(TIME_LEVEL).sum().reset_index()
     demand_UP = demand_without_other_ren[DEMAND_LEVEL]
-    demand_UP.to_csv('demand_UP.csv')
 
     demand_of_UP_bydate_byhour_units = []
     for index,demand_row in demand_UP.iterrows():
