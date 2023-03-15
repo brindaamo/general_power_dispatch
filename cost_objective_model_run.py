@@ -2,7 +2,7 @@ from datetime import datetime
 import pandas as pd
 import time 
 from utils import get_fixed_costs, get_hydro_maximum_for_constraint,get_max_capacity, get_only_thermal_power_plant, get_peak_demand, get_plant_start_type,get_thermal_effeciency,get_plant_characteristics, get_raw_data_by_time,converting_to_datetime,get_demand_data,assign_hydro_as_peak,get_demand_based_on_profile,add_new_plants,get_plant_status,get_plant_fixed_cost_capacity_bucket,get_plant_units_from_plant_names,combine_inputs_into_a_single_file,get_actuals_for_reporting,get_up_drawal_plant_capacity,get_actuals_df_for_reporting,get_demand_data_from_a_file
-from utils import INPUT_THERMAL_EFFECIENCY_FILE_NAME,INPUT_FILE_LOCATION,DEVELOPMENT_PERIOD_END_TIME,DEVELOPMENT_PERIOD_START_TIME,MODEL_PERIOD_END_TIME,MODEL_PERIOD_START_TIME,OUTPUT_ACTUALS_FOLDER,OUTPUT_SOLUTION_FOLDER,MONTH,DEMAND_PROFILE,INPUT_FIXED_COSTS_DATA,DEMAND_DATA_FILE_LOCATION
+from utils import INPUT_THERMAL_EFFECIENCY_FILE_NAME,INPUT_FILE_LOCATION,DEVELOPMENT_PERIOD_END_TIME,DEVELOPMENT_PERIOD_START_TIME,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME,OUTPUT_ACTUALS_FOLDER,OUTPUT_SOLUTION_FOLDER,MONTH,DEMAND_PROFILE,INPUT_FIXED_COSTS_DATA,DEMAND_DATA_FILE_LOCATION
 from optimization import creating_optimization_instance_primary_problem, reading_optimization_data,creating_optimization_instance,solving_optimization_instance
 from data_validations_preprocessing import capacity_checks_of_plants,cost_checks_of_plant,filling_missing_demand_withmean,missing_demand_at_timeblock_level_and_filling,demand_capacity_mismatch
 from  output_formatting import converting_outputs_to_df,output_formatting_primary_opti_solution
@@ -77,7 +77,7 @@ with open("optimization_solution_with_new_constraints.txt", "w") as text_file:
 actuals_df = get_actuals_df_for_reporting(model_data)
 opti_output,opti_final_output_with_actuals = converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates,plant_names,demand_of_UP_bydate_byhour_units,actuals_data,actuals_df)
 
-opti_solution_location = OUTPUT_SOLUTION_FOLDER +"/"+ MONTH + "__opti_solution_"+DEMAND_PROFILE+"_"+str(datetime.now().date())+"_with_no_ramping"+".csv"
+opti_solution_location = OUTPUT_SOLUTION_FOLDER +"/"+ MONTH + "__opti_solution_"+DEMAND_PROFILE+"_"+str(datetime.now().date())+".csv"
 opti_final_output_with_actuals.to_csv(opti_solution_location,index=False)
 print(time.time() - t0)
 
