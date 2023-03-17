@@ -34,7 +34,7 @@ DAYS_OF_TRAININIG = 60
 # DEVELOPMENT_PERIOD_END_TIME_STR = input("input the dev end date in the format yyyy-m-d: ")
 MODEL_PERIOD_START_TIME_STR = input("input the model start date in the format yyyy-m-d: ")
 MODEL_PERIOD_END_TIME_STR = input("input the model end date in the format yyyy-m-d: ")
-RUN_DATE_STR = input("enter the run date in the format similar to jul_14th_2022: ")
+# RUN_DATE_STR = input("enter the run date in the format similar to jul_14th_2022: ")
 
 DEVELOPMENT_PERIOD_END_TIME = datetime.strptime(MODEL_PERIOD_START_TIME_STR, '%Y-%m-%d')
 DEVELOPMENT_PERIOD_START_TIME = DEVELOPMENT_PERIOD_END_TIME - timedelta(days=DAYS_OF_TRAININIG)
@@ -46,7 +46,7 @@ DEVELOPMENT_PERIOD_START_TIME = DEVELOPMENT_PERIOD_END_TIME - timedelta(days=DAY
 #start and end of testing window 
 MODEL_PERIOD_START_TIME = datetime.strptime(MODEL_PERIOD_START_TIME_STR, '%Y-%m-%d')
 MODEL_PERIOD_END_TIME = datetime.strptime(MODEL_PERIOD_END_TIME_STR, '%Y-%m-%d')
-MONTH = RUN_DATE_STR
+MONTH = MODEL_PERIOD_START_TIME_STR
 INFINITE_CAPACITY = 14000
 MINIMUM_UP_DRAWAL = 0
 #values accepted are 'high','base', 'low' and 'stress_testing'
