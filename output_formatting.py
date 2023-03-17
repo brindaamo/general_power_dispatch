@@ -172,7 +172,7 @@ def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates
     actuals_df['capacity'] = actuals_df['upsldc_unit_capacity']
     actuals_df['demand_profile'] = DEMAND_PROFILE
     actuals_df['model_objective'] = OBJECTIVE
-    actuals_df['model_run_date'] = str(datetime.now().date())  
+    actuals_df['model_run_date'] = str(datetime.now())  
 
     opti_final_output_with_actuals = opti_output.merge(actuals_df,on=['model_plant_name','date','time_bucket','capacity','model_objective','demand_profile','model_run_date'],how='outer')
 

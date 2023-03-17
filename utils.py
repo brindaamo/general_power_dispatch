@@ -28,12 +28,14 @@ MINIMUM_PEAK_PLANT_CAPACITY = 0.45
 MAXIMUM_PEAK_PLANT_CAPACITY = 1
 OBJECTIVE = 'cost'
 DAYS_OF_TRAININIG = 60
+NUMBER_OF_DAYS_OF_SCHEDULE = 1
+
 
 # start and end date of developmental window
 # DEVELOPMENT_PERIOD_START_TIME_STR = input("input the dev start date in the format yyyy-m-d: ")
 # DEVELOPMENT_PERIOD_END_TIME_STR = input("input the dev end date in the format yyyy-m-d: ")
 MODEL_PERIOD_START_TIME_STR = input("input the model start date in the format yyyy-m-d: ")
-MODEL_PERIOD_END_TIME_STR = input("input the model end date in the format yyyy-m-d: ")
+# MODEL_PERIOD_END_TIME_STR = input("input the model end date in the format yyyy-m-d: ")
 # RUN_DATE_STR = input("enter the run date in the format similar to jul_14th_2022: ")
 
 DEVELOPMENT_PERIOD_END_TIME = datetime.strptime(MODEL_PERIOD_START_TIME_STR, '%Y-%m-%d')
@@ -45,7 +47,7 @@ DEVELOPMENT_PERIOD_START_TIME = DEVELOPMENT_PERIOD_END_TIME - timedelta(days=DAY
 
 #start and end of testing window 
 MODEL_PERIOD_START_TIME = datetime.strptime(MODEL_PERIOD_START_TIME_STR, '%Y-%m-%d')
-MODEL_PERIOD_END_TIME = datetime.strptime(MODEL_PERIOD_END_TIME_STR, '%Y-%m-%d')
+MODEL_PERIOD_END_TIME = MODEL_PERIOD_START_TIME + timedelta(days=NUMBER_OF_DAYS_OF_SCHEDULE)
 MONTH = MODEL_PERIOD_START_TIME_STR
 INFINITE_CAPACITY = 14000
 MINIMUM_UP_DRAWAL = 0
