@@ -61,6 +61,7 @@ BASE_PROFILE_FACTOR = 1
 PLANT_UNIT_LEVEL = ['plant_name','actual_plant_unit']
 TIME_LEVEL = ['date','hour_of_day','time_block_of_day']
 DEMAND_LEVEL = ['date','hour_of_day','time_block_of_day','avg_unit_current_load']
+MODEL_RUN_DATE = datetime.now().date()
 
 
 

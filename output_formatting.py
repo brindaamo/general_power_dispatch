@@ -1,7 +1,8 @@
 import json
 
 import pandas as pd
-# from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
+# from utils import MODEL_PERIOD_END_TIME, MODEL_PERIOD_START_TIME,MODEL_RUN_DATE, get_demand_data,get_plant_characteristics, get_raw_data_by_time,reading_input_data
+from utils import MODEL_RUN_DATE
 from datetime import date, datetime
 import re
 from utils import OBJECTIVE,DEMAND_PROFILE
@@ -91,11 +92,12 @@ def output_plant_chars(optimization_solution_json,plant_units,demand_blocks,actu
                     obj['model_max_ramp_down_delta'] = plant.up_drawal_ramp_down_delta
                 obj['avg_variable_cost'] = plant.average_variable_cost 
                 obj['model_production_cost'] = plant.average_variable_cost*obj['model_production']
-                obj['model_PLF'] = (float(obj['model_production']) / float(plant.capacity)) 
+                obj['model_plf'] = (float(obj['model_production']) / float(plant.capacity)) 
                 obj['model_base_or_peak_plant'] = plant.base_or_peak_plant
                 obj['demand_profile'] = DEMAND_PROFILE
                 obj['model_objective'] = OBJECTIVE
-                obj['model_run_date'] = str(datetime.now().date())  
+                obj['model_run_date'] = MODEL_RUN_DATE 
+ 
 
     # for obj in optimization_solution_obj:
     #     plant_name = obj['model_plant_name'].replace("_"," ")
@@ -172,7 +174,7 @@ def converting_outputs_to_df(plant_units,scheduling_time_blocks,scheduling_dates
     actuals_df['capacity'] = actuals_df['upsldc_unit_capacity']
     actuals_df['demand_profile'] = DEMAND_PROFILE
     actuals_df['model_objective'] = OBJECTIVE
-    actuals_df['model_run_date'] = str(datetime.now())  
+    actuals_df['model_run_date'] = MODEL_RUN_DATE  
 
     opti_final_output_with_actuals = opti_output.merge(actuals_df,on=['model_plant_name','date','time_bucket','capacity','model_objective','demand_profile','model_run_date'],how='outer')
 
@@ -199,16 +201,3 @@ def date_hook(json_dict):
     return json_dict
 
 
-##Testing code starts
-#FILE_NAME = "RawData/upsldc_plant_unit_time_block.csv"
-#raw_data = reading_input_data(file_name=FILE_NAME)
-#plant_units = get_plant_characteristics(raw_data)
-
-#model_data = get_raw_data_by_time(raw_data,MODEL_PERIOD_START_TIME,MODEL_PERIOD_END_TIME)
-#demand_of_UP_bydate_byhour_units,demand_UP = get_demand_data(model_data)
-
-#optimization_solution_json = output_formatting("optimization_solution.txt")
-#add_plant_percent_ramp_up_or_down(optimization_solution_json,plant_units)
-# capacity_constraint_check(optimization_solution_json,plant_units)
-# demand_satisfaction_constraint_check(optimization_solution_json,demand_of_UP_bydate_byhour_units)
-##Testing code ends
