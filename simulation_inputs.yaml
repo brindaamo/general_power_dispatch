@@ -1,8 +1,8 @@
-start_date: '2022-04-01'
-end_date: '2023-04-01'
+start_date: '2022-01-01'
+end_date: '2022-01-02'
 country: 'IN'
 state: 'Rajasthan'
 state_code: 'IN-RJ'
-demand_group: 'Rajasthan 2021/11 to 2022/10 - 15 minute'
+demand_group: 'Rajasthan - No RE - 2021/07 to 2022/06 - 15 minute'
 re_penetration: 0.2
 project_name: 'something_the_user_wants'

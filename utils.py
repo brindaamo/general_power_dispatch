@@ -1,7 +1,6 @@
 #this function will connect to the database and give access to the tables in the database
 import pandas as pd 
-import sqlalchemy
-import datetime
+from datetime import datetime,timedelta,date
 
 from sqlalchemy import create_engine,text
 from config import connection_string
@@ -23,6 +22,7 @@ INPUT_MAPPING_TIMEBLOCKS_TO_HOURS = "RawData/hours_timeblock_mapping.csv"
 MASTER_PLANNING_ENTITIES_TABLE = 'input_data.planning_entities'
 MASTER_GENERATING_ASSETS_TABLE = 'input_data.generating_assets_list'
 MASTER_PRICING_TABLE = 'input_data.electricity_purchase_prices'
+MASTER_HISTORICAL_DATA = 'general_power_dispatch/RawData/rjsldc.csv'
 
 def connecting_to_server():
     
@@ -77,6 +77,31 @@ def get_data_between_dates(start_date, end_date,date_column_name, table_name, co
     
     conn.close()
     return df
+
+def read_csv_file_between_dates(file_path, start_date, end_date):
+    """
+    Reads a CSV file between two dates and creates a DataFrame.
+
+    Args:
+        file_path (str): The path to the CSV file.
+        start_date (str): The start date in 'YYYY-MM-DD' format.
+        end_date (str): The end date in 'YYYY-MM-DD' format.
+
+    Returns:
+        pandas.DataFrame: The created DataFrame.
+    """
+    try:
+        df = pd.read_csv(file_path)
+        df['time_block_start_time'] = pd.to_datetime(df['time_block_start_time'])  # Replace 'date_column' with the actual column name
+        filtered_df = df.loc[(df['time_block_start_time'] >= start_date) & (df['time_block_start_time'] < end_date)]
+        return filtered_df
+    
+    except FileNotFoundError:
+        print(f"File not found at path: {file_path}")
+    
+    except pd.errors.ParserError:
+        print(f"Error parsing CSV file at path: {file_path}")
+
 
 # Function to select columns from a DataFrame
 def select_columns(df, columns):
@@ -212,3 +237,47 @@ def get_ramp_up_and_ramp_down_deltas(capacity: float, energy_source: str):
         ramp_down_delta = capacity * 0.7 * COAL_RAMP_DOWN_PERCENT
 
     return ramp_up_delta, ramp_down_delta
+
+
+def get_dates_between(start_date_str: datetime, end_date_str: datetime):
+    """
+    Retrieves all dates between the given start and end dates.
+
+    Args:
+        start_date_str (datetime): The start date in the format 'YYYY-MM-DD'.
+        end_date_str (datetime): The end date in the format 'YYYY-MM-DD'.
+
+    Returns:
+        List[datetime]: A list of dates in the format 'YYYY-MM-DD' between the start and end dates.
+    """
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    
+    dates = []
+    current_date = start_date
+
+    while current_date < end_date:
+        dates.append(current_date)
+        current_date += timedelta(days=1)
+
+    return dates
+
+#This method is used to convert datetime to string while parsing to json in code
+def my_date_time_converter(o):
+    if isinstance(o, datetime):
+        return o.__str__()
+
+#This method is used to convert datetime.date to string while parsing to json in code
+def my_date_converter(o):
+    if isinstance(o, date):
+        return o.__str__()
+
+#This method is used to convert string to date for formatting json to string
+def date_hook(json_dict):
+    for (key, value) in json_dict.items():
+        try:
+            json_dict[key] = datetime.strptime(value, "%Y-%m-%d").date()
+        except:
+            pass
+    return json_dict
+
