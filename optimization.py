@@ -9,6 +9,19 @@ class Optimization(InputModels):
     
     #this function reads the optimization data
     def reading_optimization_data(self):
+        """
+        This function reads the optimization data from the input models and stores it in class variables.
+        
+        Returns:
+            tuple: A tuple containing the following data in order:
+                - list: Plant names.
+                - dict: Plant production costs, keyed by plant name.
+                - dict: Plant lower capacities, keyed by plant name.
+                - dict: Plant upper capacities, keyed by plant name.
+                - dict: Plant ramp-up deltas, keyed by plant name.
+                - dict: Plant ramp-down deltas, keyed by plant name.
+                - dict: Demand values, keyed by date and time block.
+        """
         
         self.plant_names = []
         self.plant_production_costs = {}
@@ -17,7 +30,7 @@ class Optimization(InputModels):
         self.plant_ramp_up_deltas = {}
         self.plant_ramp_down_deltas = {}
         self.demand_values = {}
-        self.fixed_costs = {}
+        self.startup_costs = {}
         self.hydro_forecasts = {}
 
 
@@ -29,7 +42,7 @@ class Optimization(InputModels):
                 self.plant_lower_capacity[plant.name] = plant.lower_capacity
                 self.plant_ramp_up_deltas[plant.name] = plant.ramp_up_delta
                 self.plant_ramp_down_deltas[plant.name] = plant.ramp_down_delta
-                self.fixed_costs[plant.name] = plant.fixed_cost
+                self.startup_costs[plant.name] = plant.startup_cost
                 self.hydro_forecasts[plant.name] = plant.hydro_limit
 
             self.scheduling_time_blocks = list(range(1,97))
@@ -41,43 +54,63 @@ class Optimization(InputModels):
         return self.plant_names,self.plant_production_costs,self.plant_lower_capacity,self.plant_upper_capacity,self.plant_ramp_up_deltas,self.plant_ramp_down_deltas,self.demand_values
         
     def creating_optimization_instance_primary_problem(self):
+
+        """
+        Creates and returns the primary optimization problem instance for production cost minimization.
+        
+        Returns:
+            LpProblem: The primary optimization problem instance.
+        """
         
         #creating the objective function 
         self.primary_opti_prob = LpProblem("production_cost_minimization", LpMinimize)
 
         #creating the vatiables 
-        production_vars = LpVariable.dicts(name = "productionUnits,",indices = [i for i in self.plant_names],lowBound=0)
-        plant_off_or_on = LpVariable.dict(name="powerOnOff,",indices = [i for i in self.plant_names],cat='Binary')
+        production_vars = LpVariable.dicts(name = "productionUnits,",indices = [i for i in self.plant_names if i != 'excess plant'],lowBound=0)
+        plant_off_or_on = LpVariable.dict(name="powerOnOff,",indices = [i for i in self.plant_names if i != 'excess plant'],cat='Binary')
 
         #demand_satisfaction_constraints
         total_capacity = 0
         for plant in self.power_plants:
-            total_capacity += plant.upper_capacity
+            if plant.name != 'excess plant':
+                total_capacity += plant.upper_capacity
         demand_considered = min(self.peak_demand,total_capacity)
         
-        self.primary_opti_prob+= (lpSum(production_vars[plant] for plant in self.plant_names) >= 1
+        self.primary_opti_prob+= (lpSum(production_vars[plant] for plant in self.plant_names if plant != 'excess plant') >= 1
         
         )
         #capacity constraints 
         normalized_upper_capacity = {}
         for plant in self.power_plants:
             if(plant.average_variable_cost>0):
-                normalized_upper_capacity[plant.name] = plant.upper_capacity/demand_considered
+                if plant.name != 'excess plant':
+                    normalized_upper_capacity[plant.name] = plant.upper_capacity/demand_considered
         
         for plant in self.plant_names:
-            self.primary_opti_prob += production_vars[plant] <= normalized_upper_capacity[plant]
+            if plant != 'excess plant':
+                self.primary_opti_prob += production_vars[plant] <= normalized_upper_capacity[plant]
         
         #this constraint ensures that the a plant is on only when there is production
         #other constraints 
         for plant in self.plant_names:
-            self.primary_opti_prob += plant_off_or_on[plant] >= production_vars[plant]
+            if plant != 'excess plant':
+                self.primary_opti_prob += plant_off_or_on[plant] >= production_vars[plant]
 
         #objective function
-        self.primary_opti_prob += lpSum(self.fixed_costs[plant]*plant_off_or_on[plant] for plant in self.plant_names) + lpSum(self.plant_production_costs[plant] for plant in self.plant_names)
-        
+        self.primary_opti_prob += lpSum(self.startup_costs[plant] * plant_off_or_on[plant] for plant in self.plant_names if plant != 'excess plant') + lpSum(self.plant_production_costs[plant] for plant in self.plant_names if plant != 'excess plant')
+
         return self.primary_opti_prob
     
     def solving_primary_optimization(self):
+
+        """
+        Solves the primary optimization problem and returns the solution status and output.
+
+        Returns:
+            tuple: A tuple containing the following data in order:
+                - str: The status of solving the optimization problem.
+                - str: The output containing the variable values with non-zero production.
+        """
         self.primary_opti_prob.solve()
         
         self.primary_status = ""
@@ -96,16 +129,29 @@ class Optimization(InputModels):
         
 
     def creating_optimization_instance(self):
-        
+
+        """
+        Creates and returns the secondary optimization problem instance for production cost minimization.
+
+        Returns:
+            LpProblem: The secondary optimization problem instance.
+        """
+
+        #chosen plants names list from the primary optimization problem 
+        self.chosen_plant_names = list(self.primarysolution_output_dictionary.keys())
+        self.chosen_plant_names.append('excess plant')
+
+        #chosen plants list from the names 
+        self.chosen_plants = [plant for plant in self.power_plants if plant.name in self.chosen_plant_names]
         
         self.prob = LpProblem("production_cost_minimization", LpMinimize)
       
 
         #Creating the production variables
-        production_vars = LpVariable.dicts(name = "production_units",indices = [(i,j,k) for i in self.plant_names for j in self.scheduling_dates for k in self.scheduling_time_blocks],lowBound=0)
+        production_vars = LpVariable.dicts(name = "production_units",indices = [(i,j,k) for i in self.chosen_plant_names for j in self.scheduling_dates for k in self.scheduling_time_blocks],lowBound=0)
 
         #LP Objective function 
-        self.prob += lpSum([self.plant_production_costs[i]*production_vars[(i,j,k)] for i in self.plant_names for j in self.scheduling_dates for k in self.scheduling_time_blocks]), "Sum of production costs"
+        self.prob += lpSum([self.plant_production_costs[i]*production_vars[(i,j,k)] for i in self.chosen_plant_names for j in self.scheduling_dates for k in self.scheduling_time_blocks]), "Sum of production costs"
         
         
         #Adding constraints to the model
@@ -115,50 +161,54 @@ class Optimization(InputModels):
         for date in self.scheduling_dates:
             for time_block in self.scheduling_time_blocks:
                 demand_date_timeblock = date.strftime('%Y-%m-%d') + "-"+str(time_block)
-                self.prob+= (lpSum(production_vars[(plant,date,time_block)] for plant in self.plant_names) >= self.demand_values[demand_date_timeblock])
+                self.prob+= (lpSum(production_vars[(plant,date,time_block)] for plant in self.chosen_plant_names) >= self.demand_values[demand_date_timeblock])
 
 
         # capacity constraint 
         # capacity of the power plant cannot be exceeded at any time block
 
-        for plant in self.plant_names:
+        for plant in self.chosen_plant_names:
             for date in self.scheduling_dates:
                 for time_block in self.scheduling_time_blocks:
                     self.prob += production_vars[(plant,date,time_block)] <= self.plant_upper_capacity[plant]
                           
-        for plant in self.power_plants:
+        for plant in self.chosen_plants:
             for date in self.scheduling_dates:
                 for time_block in self.scheduling_time_blocks:
                     if plant.fuel_type != "HYDRO":
-                        self.prob += production_vars[(plant.name,date,time_block)] >= self.plant_lower_capacity[plant.name]
+                        self.prob += production_vars[(plant.name,date,time_block)] >= plant.lower_capacity
         
 
         #ramp up constraints 
-        for plant in self.plant_names:
-            for date in self.scheduling_dates:
-                for time_block in self.scheduling_time_blocks[:-1]:
-                    self.prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= self.plant_ramp_up_deltas[plant]
+        for plant in self.chosen_plant_names:
+            if plant not in 'excess plant':
+                for date in self.scheduling_dates:
+                    for time_block in self.scheduling_time_blocks[:-1]:
+                        self.prob += production_vars[(plant,date,time_block+1)] - production_vars[(plant,date,time_block)]<= self.plant_ramp_up_deltas[plant]
 
         #ramp up constraints for the last time block connecting to the next day
-        for plant in self.plant_names:
-            for today in self.scheduling_dates[:-1]:
-                tomorrow = today+timedelta(1)
-                self.prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= self.plant_ramp_up_deltas[plant]
+        for plant in self.chosen_plant_names:
+            if plant not in 'excess plant':
+                for today in self.scheduling_dates[:-1]:
+                    tomorrow = today+timedelta(1)
+                    self.prob += production_vars[(plant,tomorrow,1)] - production_vars[(plant,today,96)]<= self.plant_ramp_up_deltas[plant]
 
         #ramp down constraints 
-        for plant in self.plant_names:
-            for date in self.scheduling_dates:
-                for time_block in self.scheduling_time_blocks[:-1]:
-                    self.prob +=  production_vars[(plant,date,time_block)] - production_vars[(plant,date,time_block+1)]<= self.plant_ramp_down_deltas[plant]
+        for plant in self.chosen_plant_names:
+            if plant not in 'excess plant':
+                for date in self.scheduling_dates:
+                    for time_block in self.scheduling_time_blocks[:-1]:
+                        self.prob +=  production_vars[(plant,date,time_block)] - production_vars[(plant,date,time_block+1)]<= self.plant_ramp_down_deltas[plant]
 
         #ramp down constraints for the last time block connecting to the next day
-        for plant in self.plant_names:
-            for today in self.scheduling_dates[:-1]:
-                tomorrow = today+timedelta(1)
-                self.prob += production_vars[(plant,today,96)] - production_vars[(plant,tomorrow,1)]<= self.plant_ramp_down_deltas[plant]
+        for plant in self.chosen_plant_names:
+            if plant not in 'excess plant':
+                for today in self.scheduling_dates[:-1]:
+                    tomorrow = today+timedelta(1)
+                    self.prob += production_vars[(plant,today,96)] - production_vars[(plant,tomorrow,1)]<= self.plant_ramp_down_deltas[plant]
 
         # day level hydro constraint
-        for plant in self.power_plants:
+        for plant in self.chosen_plants:
             if plant.fuel_type == 'HYDRO':
                 for date in self.scheduling_dates:
                     # Assuming you have a forecasted DataFrame called forecasted_df
@@ -168,6 +218,15 @@ class Optimization(InputModels):
         return self.prob
 
     def solving_optimization_instance(self):
+
+        """
+        Solves the secondary optimization problem and returns the solution status and output.
+
+        Returns:
+            tuple: A tuple containing the following data in order:
+                - str: The status of solving the optimization problem.
+                - str: The output containing the optimal objective value and variable values with non-zero production.
+        """
         self.prob.solve()
         
         self.solution_status = ""
@@ -188,24 +247,6 @@ class Optimization(InputModels):
         
         return self.solution_status,self.output
     
-def main():
-    
-    simulation_yaml_file = "general_power_dispatch/simulation_inputs.yaml"
-    opti = Optimization(simulation_yaml_file)
-    opti.get_inputs_from_yaml_file()
-    opti.get_powerplant_data()
-    opti.get_demand_data()
-    opti.get_power_plant_chars()
-    opti.get_peak_demand()
-    opti.get_hydro_maximum_for_constraint(1)
-    opti.reading_optimization_data()
-    opti.creating_optimization_instance_primary_problem()
-    opti.solving_primary_optimization()
-    opti.creating_optimization_instance()
-    opti.solving_optimization_instance()
-    
-    
-if __name__ == "__main__":
-    main()
+
 
 

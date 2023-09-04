@@ -15,6 +15,7 @@ MINIMUM_BASE_PLANT_CAPACITY = 0.70
 MAXIMUM_BASE_PLANT_CAPACITY = 1
 MINIMUM_PEAK_PLANT_CAPACITY = 0.45
 MAXIMUM_PEAK_PLANT_CAPACITY = 1
+INFINITE_CAPACITY = 10000
 
 MASTER_DEMAND_TABLE_NAME = 'input_data.demand_data_for_gridpath'
 DATE_IN_DEMAND_TABLE = 'time_step_start'
@@ -23,6 +24,7 @@ MASTER_PLANNING_ENTITIES_TABLE = 'input_data.planning_entities'
 MASTER_GENERATING_ASSETS_TABLE = 'input_data.generating_assets_list'
 MASTER_PRICING_TABLE = 'input_data.electricity_purchase_prices'
 MASTER_HISTORICAL_DATA = 'general_power_dispatch/RawData/rjsldc.csv'
+MASTER_THERMAL_START_UP_COSTS = 'input_data.thermal_plant_startup_costs'
 
 def connecting_to_server():
     
@@ -75,7 +77,6 @@ def get_data_between_dates(start_date, end_date,date_column_name, table_name, co
 
     df = pd.DataFrame(rows, columns=result.keys())
     
-    conn.close()
     return df
 
 def read_csv_file_between_dates(file_path, start_date, end_date):

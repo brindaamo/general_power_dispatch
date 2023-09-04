@@ -9,6 +9,19 @@ from optimization import Optimization
 
 
 class output_formatting(Optimization):
+
+    def output_formatting_primary_opti_solution(self):
+        #output should be {'plant_unit_name':'plant_unit_production_units'}
+        self.primarysolution_output_dictionary = {}  
+        #input will be a string of the format choose_plants 
+        splitData = self.primary_output.split("\n")
+        for arrayLength in range(len(splitData)):
+            if(splitData[arrayLength].find("productionUnits")!=-1):
+                outputDataSplitArray = splitData[arrayLength].rsplit(",_")[1].rsplit("=")
+                outputDataSplitArray[0]=outputDataSplitArray[0].replace("_"," ")
+                self.primarysolution_output_dictionary[outputDataSplitArray[0]] = outputDataSplitArray[1]
+        #output should be {'plant_unit_name':'plant_unit_production_units'}     
+        return self.primarysolution_output_dictionary
     
     def extract_data_from_text_file(self,input_file_path, output_csv_file_path):
         optimization_solution_csv_data = []
@@ -65,13 +78,21 @@ def main():
     opti.get_demand_data()
     opti.get_power_plant_chars()
     opti.get_peak_demand()
-    opti.get_hydro_maximum_for_constraint(1)
+    opti.create_excess_plant()
+    opti.get_final_historical_df()
+    opti.get_hydro_maximum_for_constraint(2)
+    opti.get_plant_fixed_cost_capacity_bucket()
+    opti.get_plant_status()
+    opti.get_plant_start_type()
+    opti.get_start_up_costs()
     opti.reading_optimization_data()
     opti.creating_optimization_instance_primary_problem()
     opti.solving_primary_optimization()
+    opti.output_formatting_primary_opti_solution()
     opti.creating_optimization_instance()
     opti.solving_optimization_instance()
     opti.extract_data_from_text_file(input_file_path,output_csv_file_path)
+    
     
     
 if __name__ == "__main__":
