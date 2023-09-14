@@ -99,6 +99,10 @@ class Optimization(InputModels):
         #objective function
         self.primary_opti_prob += lpSum(self.startup_costs[plant] * plant_off_or_on[plant] for plant in self.plant_names if plant != 'excess plant') + lpSum(self.plant_production_costs[plant] for plant in self.plant_names if plant != 'excess plant')
 
+        with open("lp_problem.txt", "w") as file:
+            file.write(str(self.primary_opti_prob))
+
+
         return self.primary_opti_prob
     
     def solving_primary_optimization(self):
