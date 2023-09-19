@@ -4,8 +4,11 @@ from datetime import date, datetime
 import re
 import csv
 from utils import my_date_converter,my_date_time_converter,date_hook
+from utils import BIG_QUERY_CREDENTIALS, BIG_QUERY_RESULTS_TABLE
 from datetime import timedelta
 from optimization import Optimization
+from google.cloud import bigquery
+
 
 
 class output_formatting(Optimization):
@@ -30,7 +33,7 @@ class output_formatting(Optimization):
             for line in file:
                 first_chunk = line.rsplit("production_units_(")
                 if len(first_chunk) > 1:
-                    json_data = {}
+                    self.solution_json_file = {}
                     plant_name = re.search(r"'(.*?)'", first_chunk[1]).group(1)
                     second_chunk = first_chunk[1].replace("'" + plant_name + "'", "").replace("_", "")
 
@@ -47,26 +50,45 @@ class output_formatting(Optimization):
                     time_bucket = third_chunk[0]
                     production = third_chunk[1].strip()
 
-                    json_data["model_plant_name"] = plant_name
-                    json_data["date"] = formatted_date
-                    json_data["time_bucket"] = time_bucket
-                    json_data["model_production"] = float(production)
+                    self.solution_json_file["model_run_date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.solution_json_file["state"] = self.state
+                    self.solution_json_file["model_plant_name"] = plant_name
+                    self.solution_json_file["generation_date"] = formatted_date
+                    self.solution_json_file["time_bucket"] = time_bucket
+                    self.solution_json_file["model_production"] = float(production)
 
-                    optimization_solution_csv_data.append(json_data)
+                    optimization_solution_csv_data.append(self.solution_json_file)
 
         # Write the data to the CSV file
-        field_names = ["model_plant_name", "date", "time_bucket", "model_production"]
+        field_names = ["model_run_date","state","generation_date","model_plant_name", "time_bucket", "model_production"]
         with open(output_csv_file_path, "w", newline="") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=field_names)
             writer.writeheader()
             writer.writerows(optimization_solution_csv_data)
         
         return None 
-
     
-   
+    def data_into_big_query_table(self):
+      
+        # Create a BigQuery client using your credentials
+        client = bigquery.Client.from_service_account_json(BIG_QUERY_CREDENTIALS)
 
-        
+        #rows to insert 
+        rows_to_insert = [self.solution_json_file]
+
+        # Insert the rows into BigQuery
+        errors = client.insert_rows_json(BIG_QUERY_RESULTS_TABLE, rows_to_insert)
+
+        if errors:
+            print(f"Errors: {errors}")
+        else:
+            print("Data inserted successfully.")
+    
+        return None
+
+
+
+           
 def main():
     input_file_path = "optimization_solution_with_new_constraints.txt"
     output_csv_file_path = "optimization_solution.csv"
@@ -92,6 +114,9 @@ def main():
     opti.creating_optimization_instance()
     opti.solving_optimization_instance()
     opti.extract_data_from_text_file(input_file_path,output_csv_file_path)
+    opti.data_into_big_query_table()
+
+    
     
     
     

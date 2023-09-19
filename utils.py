@@ -25,6 +25,8 @@ MASTER_GENERATING_ASSETS_TABLE = 'input_data.generating_assets_list'
 MASTER_PRICING_TABLE = 'input_data.electricity_purchase_prices'
 MASTER_HISTORICAL_DATA = '/home/ubuntu/general_power_dispatch/general_power_dispatch/RawData/rjsldc-202107-202111.csv'
 MASTER_THERMAL_START_UP_COSTS = 'input_data.thermal_plant_startup_costs'
+BIG_QUERY_CREDENTIALS = 'general_power_dispatch/simple-pd-model-dev.json'
+BIG_QUERY_RESULTS_TABLE = 'india_electricity_models.r_simple_power_dispatch_results'
 
 def connecting_to_server():
     
