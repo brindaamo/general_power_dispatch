@@ -27,7 +27,7 @@ class output_formatting(Optimization):
         return self.primarysolution_output_dictionary
     
     def extract_data_from_text_file(self,input_file_path, output_csv_file_path):
-        optimization_solution_csv_data = []
+        self.optimization_solution_csv_data = []
 
         with open(input_file_path, "r") as file:
             for line in file:
@@ -57,14 +57,14 @@ class output_formatting(Optimization):
                     self.solution_json_file["time_bucket"] = time_bucket
                     self.solution_json_file["model_production"] = float(production)
 
-                    optimization_solution_csv_data.append(self.solution_json_file)
+                    self.optimization_solution_csv_data.append(self.solution_json_file)
 
         # Write the data to the CSV file
         field_names = ["model_run_date","state","generation_date","model_plant_name", "time_bucket", "model_production"]
         with open(output_csv_file_path, "w", newline="") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=field_names)
             writer.writeheader()
-            writer.writerows(optimization_solution_csv_data)
+            writer.writerows(self.optimization_solution_csv_data)
         
         return None 
     
@@ -73,11 +73,10 @@ class output_formatting(Optimization):
         # Create a BigQuery client using your credentials
         client = bigquery.Client.from_service_account_json(BIG_QUERY_CREDENTIALS)
 
-        #rows to insert 
-        rows_to_insert = [self.solution_json_file]
+    
 
         # Insert the rows into BigQuery
-        errors = client.insert_rows_json(BIG_QUERY_RESULTS_TABLE, rows_to_insert)
+        errors = client.insert_rows_json(BIG_QUERY_RESULTS_TABLE, self.optimization_solution_csv_data)
 
         if errors:
             print(f"Errors: {errors}")
