@@ -217,7 +217,8 @@ class InputModels():
         name = 'excess plant'
         lower_capacity = 0
         higher_capacity = INFINITE_CAPACITY
-        variable_cost = self.get_cost_for_excess_plant()
+        variable_cost = 1.5
+        # variable_cost = self.get_cost_for_excess_plant()
         type_of_plant = 'excess'
         self.power_plants.append(PlantFeatures(name,None,None,INFINITE_CAPACITY,lower_capacity,higher_capacity,variable_cost,None,type_of_plant,None,None))
 
