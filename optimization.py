@@ -129,6 +129,11 @@ class Optimization(InputModels):
             if v.varValue>0:
                 self.primary_output += v.name + "=" + str(v.varValue) + "\n" 
 
+        with open("primary_optimization_solution.txt", 'w') as output_file:
+            output_file.write(self.primary_status)
+            output_file.write("\nVariable values with non-zero production:\n")
+            output_file.write(self.primary_output)
+
         return self.primary_status,self.primary_output
         
 

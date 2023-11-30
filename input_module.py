@@ -155,9 +155,15 @@ class InputModels():
         self.historical_start_date= self.historical_end_date - timedelta(days=30)
         summarized_df = read_csv_file_between_dates(MASTER_HISTORICAL_DATA, self.historical_start_date, self.historical_end_date)
         self.summarized_df_with_source = summarized_df.merge(self.power_plant_data, right_on='virtual_asset_name', left_on='cea_generator_name', how='left').drop_duplicates()
-        
 
-        return self.summarized_df_with_source
+        
+        if not self.summarized_df_with_source.empty:
+            return self.summarized_df_with_source
+        
+        else:
+            raise ValueError("Historical data missing for the hydro budgets")
+        
+        return None
 
         
 
